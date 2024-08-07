@@ -1,0 +1,19 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Ignore data
+/data/
+
+# Ignore plots
+/plots/
+
+# Ignore non-coding files
+*.xlsx
+*.jpeg
+*.pdf
+*.html
+*.csv
+*.csl
+*.bib
