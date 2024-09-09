@@ -2,6 +2,10 @@
 
 ## a script `sourced` by the .Rmd to do exploratory plots.
 
+# libraries
+library(here)
+library(ggplot2)
+
 # info --------------------------------------------------------------------
 
 ## use changelog
@@ -42,22 +46,19 @@
 # }
 
 # load data
-load(here("data", "top-maturity-data.RData"))
+load(here::here("data", "top-maturity-modeldata.RData"))
 
+dat <- dat_lst$z_score_3yr_data
 
 # exploratory plots -------------------------------------------------------
 
 ## temperature by tag id
-temp_plot <- ggplot(dat, aes(x = av_temp)) +
+temp_plot <- ggplot(dat, aes(x = avg_temp)) +
   geom_histogram(colour = "black", fill = "grey80") +
   ylab("Count") +
   xlab("Average temperature (bottom) during time at liberty") +
   sgg()
 if (make_plots) {
-  cairo_pdf(here("plots", "temperature-plot.pdf"),
-            width = 7, height = 7)
-  print(temp_plot)
-  dev.off()
   jpeg(here("plots", "temperature-plot.jpg"),
        res = 300, width = (480 * 5), height = (480 * 5))
   print(temp_plot)
@@ -73,10 +74,6 @@ tag_year_plot <- ggplot(dat, aes(x = factor(season_ccamlr_release),
   xlab("Year of tagging") +
   sgg()
 if (make_plots) {
-  cairo_pdf(here("plots", "tagyear-growth-plot.pdf"),
-            width = 7, height = 7)
-  print(tag_year_plot)
-  dev.off()
   jpeg(here("plots", "tagyear-growth-plot.jpg"),
        res = 300, width = (480 * 5), height = (480 * 5))
   print(tag_year_plot)
@@ -85,7 +82,7 @@ if (make_plots) {
 
 
 ## growth by temperature
-temp_growth_plot <- ggplot(dat, aes(x = av_temp,
+temp_growth_plot <- ggplot(dat, aes(x = avg_temp,
                                     y = specific_growth_rate)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE) +
@@ -93,10 +90,6 @@ temp_growth_plot <- ggplot(dat, aes(x = av_temp,
   xlab("Average temperature (bottom) during time at liberty") +
   sgg()
 if (make_plots) {
-  cairo_pdf(here("plots", "temp-growth-plot.pdf"),
-            width = 7, height = 7)
-  print(temp_growth_plot)
-  dev.off()
   jpeg(here("plots", "temp-growth-plot.jpg"),
        res = 300, width = (480 * 5), height = (480 * 5))
   print(temp_growth_plot)
@@ -105,16 +98,12 @@ if (make_plots) {
 
 ## growth by sex
 growth_sex_plot <- ggplot(dat, aes(x = sex,
-                                   y = av_temp)) +
+                                   y = avg_temp)) +
   geom_boxplot() +
   ylab("Specific growth rate") +
-  xlab("Average temperature (bottom) during time at liberty") +
+  xlab("Sex") +
   sgg()
 if (make_plots) {
-  cairo_pdf(here("plots", "growth-sex-plot.pdf"),
-            width = 7, height = 7)
-  print(growth_sex_plot)
-  dev.off()
   jpeg(here("plots", "growth-sex-plot.jpg"),
        res = 300, width = (480 * 5), height = (480 * 5))
   print(growth_sex_plot)
@@ -122,28 +111,66 @@ if (make_plots) {
 }
 
 ## growth by temperature and sex
-temp_growth_sex_plot <- ggplot(dat, aes(x = av_temp,
+temp_growth_sex_plot <- ggplot(dat, aes(x = avg_temp,
                                         y = specific_growth_rate,
                                         colour = sex)) +
-  geom_point() +
+  geom_point(alpha = 0.2) +
   geom_smooth(method = "lm", se = FALSE) +
   ylab("Specific growth rate") +
   xlab("Average temperature (bottom) during time at liberty") +
   sgg()
 if (make_plots) {
-  cairo_pdf(here("plots", "temp-growth-sex-plot.pdf"),
-            width = 7, height = 7)
-  print(temp_growth_sex_plot)
-  dev.off()
   jpeg(here("plots", "temp-growth-sex-plot.jpg"),
        res = 300, width = (480 * 5), height = (480 * 5))
   print(temp_growth_sex_plot)
   dev.off()
 }
 
+## growth by length
+length_growth_sex_plot <- ggplot(dat, aes(x = length_total_release_cm,
+                                        y = specific_growth_rate,
+                                        colour = sex)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  ylab("Specific growth rate") +
+  xlab("Length at release (cm)") +
+  sgg()
+if (make_plots) {
+  jpeg(here("plots", "length-growth-sex-plot.jpg"),
+       res = 300, width = (480 * 5), height = (480 * 5))
+  print(temp_growth_sex_plot)
+  dev.off()
+}
 
-message("do more plots!!!!!!!!!!!!!!!!!!!!!!")
+## growth by length and year
+length_growth_year_plot <- ggplot(dat, aes(x = length_total_release_cm,
+                                          y = specific_growth_rate,
+                                          colour = as.factor(year))) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  ylab("Specific growth rate") +
+  xlab("Length at release (cm)") +
+  sgg()
+if (make_plots) {
+  jpeg(here("plots", "length-growth-year-plot.jpg"),
+       res = 300, width = (480 * 5), height = (480 * 5))
+  print(length_growth_year_plot)
+  dev.off()
+}
 
+## bottom temperature by year
+temp_year_plot <- ggplot(dat, aes(x = as.factor(year),
+                                  y = avg_temp)) +
+  geom_boxplot() +
+  xlab("Year of recapture") +
+  ylab("Average bottom temperature") +
+  sgg()
+if (make_plots) {
+  jpeg(here("plots", "bottom-temp-year-plot.jpg"),
+       res = 300, width = (480 * 5), height = (480 * 5))
+  print(temp_year_plot)
+  dev.off()
+}
 
 # save plots --------------------------------------------------------------
 

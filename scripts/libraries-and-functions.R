@@ -18,8 +18,7 @@ library(patchwork)
 
 # ggplot style
 sgg <- function(fs = 16) {
-  theme(text = element_text(family = "Times New Roman", size = fs),
-        panel.background = element_blank(),
+  theme(panel.background = element_blank(),
         axis.line = element_line(colour = "black"),
         strip.text.x = element_text(size = fs),
         axis.text = element_text(size = fs),

@@ -2,6 +2,13 @@
 
 ## a script `sourced` by the .Rmd to fir and compare the model from Table 1.
 
+# libraries
+library(here)
+library(data.table)
+library(magrittr)
+library(ggplot2)
+library(brms)
+library(beepr)
 
 # info --------------------------------------------------------------------
 
@@ -57,7 +64,10 @@
 # }
 
 ## load data
-load(here("data", "top-maturity-data.RData"))
+load(here::here("data", "top-maturity-modeldata.RData"))
+
+## choose outlier removal to use
+dat <- dat_lst$iqr_3yr_data
 
 
 # brms data ---------------------------------------------------------------
@@ -74,10 +84,10 @@ df <- dat[, .("growth" = growth_raised,
 
 # candidate model set -----------------------------------------------------
 
-## model descriptions
-tab1 <- read_xlsx(here("model-descriptions.xlsx"))
-mod_desc <- as.list(tab1$Code)
-names(mod_desc) <- tab1$`Terms included`
+# ## model descriptions
+# tab1 <- read_xlsx(here("model-descriptions.xlsx"))
+# mod_desc <- as.list(tab1$Code)
+# names(mod_desc) <- tab1$`Terms included`
 
 ## models list
 mod_lst <- list(
@@ -248,6 +258,9 @@ mod_lst <- list(
 
 # priors ------------------------------------------------------------------
 
+min(df$length)
+max(df$length)
+
 ## all priors
 all_pri <- prior(normal(0, 3), nlpar = "alpha") +
   prior(normal(0, 3), nlpar = "b1a") +
@@ -255,7 +268,7 @@ all_pri <- prior(normal(0, 3), nlpar = "alpha") +
   prior(normal(0, 3), nlpar = "b2") +
   prior(normal(0, 3), nlpar = "b3") +
   prior(normal(0, 3), nlpar = "b4") +
-  prior(normal(0, 3), nlpar = "omega", lb = -3.45, ub = 7)
+  prior(normal(0, 3), nlpar = "omega", lb = -3.07, ub = 7.46)
 
 ## priors list
 pri_lst <- vector("list", length = length(mod_lst))
@@ -267,17 +280,34 @@ for (i in 1:length(mod_lst)) {
 
 # fit the models ----------------------------------------------------------
 
-## make the fits
-fits <- lapply(1:length(mod_lst), function(v) {
-  brm(formula = mod_lst[[v]], prior = pri_lst[[v]],
-      data = df,
-      init = 0,
-      chains = 3,
-      backend = "cmdstanr",
-      save_pars = save_pars(all = TRUE),
-      control = list(adapt_delta = 0.99))
-})
+# fit models
+fit_model <- function(v) {
+  fit <- brm(formula = mod_lst[[v]], prior = pri_lst[[v]],
+             data = df,
+             init = 0,
+             chains = 3,
+             cores = 4,
+             iter = 200,
+             thin = 1,
+             backend = "rstan",
+             stanvars = stanvars,
+             save_pars = save_pars(all = TRUE),
+             control = list(adapt_delta = 0.999))
+  save(fit, file = here::here("results", "fits", "alpha_inf", paste0(names(mod_lst[v]),
+                                                                   "_iqr_3yr.Rdata"))) # Update if data changes
+  return(fit)
+}
 
+library(beepr)
+fit_14 <- fit_model(14);beep()
+fit_13 <- fit_model(13);beep()
+fit_12 <- fit_model(12);beep()
+fit_11 <- fit_model(11);beep()
+fit_10 <- fit_model(10);beep()
+fit_09 <- fit_model(9);beep()
+fit_08 <- fit_model(8);beep()
+fit_07 <- fit_model(7);beep()
+fit_06 <- fit_model(6);beep()
 
 # add model selection criteria --------------------------------------------
 

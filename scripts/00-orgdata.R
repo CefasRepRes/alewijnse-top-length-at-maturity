@@ -8,6 +8,7 @@ library(lubridate)
 library(ggplot2)
 library(data.table)
 library(FSA)
+library(beepr)
 
 # info --------------------------------------------------------------------
 
@@ -142,6 +143,9 @@ table(match_tag$taxon_code_recapture)
 # subset to TOP and 483 releases only (recaptures only TOP and 483)
 match_tag <- match_tag[which(taxon_code_release == 'TOP' & asd_code_release == '483'), ]
 
+# remove those post 2020 (we don't have temp data)
+match_tag <- match_tag[season_ccamlr <= 2020]
+
 ## Data cleaning ===============================================================
 
 # select relevant columns
@@ -198,7 +202,6 @@ loc_temps_melt$Date <- as.Date(loc_temps_melt$date)
 match_tag_TOP_483[, id := 1:.N]
 
 # loop
-# TODO: run again with updated data
 match_tag_TOP_483[, avg_temp := double()]
 for(i in 1:nrow(match_tag_TOP_483)){
   tag <- match_tag_TOP_483[i, ]
@@ -208,7 +211,7 @@ for(i in 1:nrow(match_tag_TOP_483)){
   av_temp <- mean(temps$bottom_temp)
   match_tag_TOP_483[i, avg_temp := av_temp]
   print(i)
-}
+};beep() # beep when done
 
 # write out tags with av_temp
 data.table::fwrite(match_tag_TOP_483, here::here("data", 'tags_with_av_temp.csv'))
@@ -217,6 +220,10 @@ data.table::fwrite(match_tag_TOP_483, here::here("data", 'tags_with_av_temp.csv'
 
 # read in data
 tags <- data.table::fread(here::here("data", "tags_with_av_temp.csv"))
+
+# remove 2020 (small sample size)
+tags <- tags[season_ccamlr_release != "2020" &
+               season_ccamlr_recapture.x != "2020"]
 
 # fix sex
 tags[, sex := factor(ifelse(sex_code_recapture == "F", "Female", "Male"))]
@@ -333,24 +340,51 @@ grubbs_dat_2_yr <- grubbs_dat_2_yr[!which(is.na(temperature_std)), ]
 # standardise vars
 tags_3_yr[, "length_std" := scale(length_total_release_cm)]
 tags_3_yr[, "temperature_std" := scale(avg_temp)]
+tags_3_yr[, "sgr_std" := scale(specific_growth_rate)]
 
 # subset
 z_score_3_yr <- tags_3_yr[length_std > -3 &
                             length_std < 3 &
                             temperature_std > -3 &
-                            temperature_std < 3]
+                            temperature_std < 3 &
+                            sgr_std > -3 &
+                            sgr_std < 3]
 
 # standardise vars
 tags_2_yr[, "length_std" := scale(length_total_release_cm)]
 tags_2_yr[, "temperature_std" := scale(avg_temp)]
+tags_2_yr[, "sgr_std" := scale(specific_growth_rate)]
 
 # subset
 z_score_2_yr <- tags_2_yr[length_std > -3 &
                             length_std < 3 &
                             temperature_std > -3 &
-                            temperature_std < 3]
+                            temperature_std < 3 &
+                            sgr_std > -3 &
+                            sgr_std < 3]
 
-
+# # Rosner's test ----------------------------------------------------------------
+#
+# test <- rosnerTest(tags_3_yr[, specific_growth_rate], k = round(nrow(tags_3_yr)/10))
+# test <- test$all.stats %>% data.table()
+# test <- test[Outlier == TRUE]
+#
+# rosnerRemoval <- function(data, params){
+#   outliers <- vector("list", length(params))
+#   for(i in 1:length(params)){
+#     param <- params[i]
+#     out <- rosnerTest(dplyr::pull(data, param), k = round(nrow(data)/10))
+#     out <- out$all.stats %>% data.table()
+#     out <- out[Outlier == TRUE]
+#     out <- out[, Value]
+#     outliers[[i]] <- out
+#   }
+#   setNames(outliers, paste0(params))
+#   for(i in 1:length(params)){
+#     data <- filter(data, !(params[i] %in% outliers[[i]]))
+#   }
+#   return(data)
+# }
 
 # make a list of data
 dat_lst <- list(
