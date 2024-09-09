@@ -9,6 +9,9 @@
 # Ignore plots
 /plots/
 
+# Ignore results
+/results/
+
 # Ignore non-coding files
 *.xlsx
 *.jpeg
