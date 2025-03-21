@@ -36,11 +36,11 @@
 
   model {
     growth ~ normal(mu, sigma);  // likelihood
-    alpha ~ normal(0, 3);  // prior
-    alpha_iid_sd ~ cauchy(0, 1);  // prior
+    alpha ~ normal(0, 1);  // prior
+    alpha_iid_sd ~ normal(0, 1); // prior
     alpha_base ~ normal(0, 1); // prior
-    b1a ~ normal(0, 3);  // prior
-    sigma ~ cauchy(0, 1); // prior
+    b1a ~ normal(0, 1);  // prior
+    sigma ~ normal(0, 1); // prior
   }
 
   generated quantities {
@@ -49,4 +49,3 @@
       log_lik[n] = normal_lpdf(growth[n] | alpha + alpha_iid[tag_year[n]] + b1a * length[n], sigma);
     }
   }
-

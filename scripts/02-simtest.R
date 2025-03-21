@@ -6,6 +6,7 @@ library(data.table)
 library(magrittr)
 library(ggplot2)
 library(cmdstanr)
+library(brms)
 
 ## a script `sourced` by the .qmd to create and test a simulated example.
 
@@ -351,13 +352,11 @@ fit_model <- function(v) {
              init = 0,
              chains = 3,
              cores = 4,
-             iter = 2000,
+             iter = 4000,
              thin = 1,
-             backend = "cmdstanr",
-             save_pars = save_pars(all = TRUE),
-             control = list(adapt_delta = 0.999))
+             backend = "rstan")
   save(fit, file = here::here("results", "fits", paste0(names(mod_lst[v]),
-                                                        "_test.Rdata"))) # Update if data changes
+                                                        "_brms_test.Rdata"))) # Update if data changes
   return(fit)
 }
 

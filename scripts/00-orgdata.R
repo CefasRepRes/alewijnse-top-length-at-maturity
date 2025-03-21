@@ -63,7 +63,7 @@ library(beepr)
 
 # read raw data -----------------------------------------------------------
 
-fp_raw <- "V:/FCOSO_restd_C6797_&_C6798/Data_Storage/CCAMLR_data/2024/664_GBR_2024-01-11_rds/664_GBR_2024-01-11.Rds"
+fp_raw <- "V:/FCOSO_restd_C6797_&_C6798/Data_Storage/CCAMLR_data/2024/705_GBR_2024-12-11/705_GBR_2024-12-11_rds/705_GBR_2024-12-11.Rds"
 
 raw_data <- readRDS(fp_raw)
 

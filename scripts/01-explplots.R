@@ -172,6 +172,20 @@ if (make_plots) {
   dev.off()
 }
 
+## length by year
+length_recap_plot <- ggplot(dat, aes(x = as.factor(recap_year), y = length_std)) +
+  geom_violin(fill = "grey") +
+  sgg()
+length_tag_plot <- ggplot(dat, aes(x = as.factor(tag_year), y = length_std)) +
+  geom_violin(fill = "grey") +
+  sgg()
+if (make_plots) {
+  png(here("plots", "length-year-plot.png"),
+       res = 300, width = (480 * 5), height = (480 * 5))
+  print(length_tag_plot / length_recap_plot)
+  dev.off()
+}
+
 # save plots --------------------------------------------------------------
 
 ## save list

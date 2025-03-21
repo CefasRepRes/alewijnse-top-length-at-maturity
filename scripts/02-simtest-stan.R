@@ -28,6 +28,9 @@ dat <- dat_lst$iqr_3yr_data
 length(unique(dat$year)) # no years
 dat[, .N, by = sex] # prop sexes
 
+# mean growth
+mean(dat$growth_raised)
+
 ## set parameters ==============================================================
 
 # numbers
@@ -39,9 +42,9 @@ n_female_per_year <- rbinom(n_years, n_per_year, p_female)
 n_male_per_year <- n_per_year - n_female_per_year
 
 # fixed and linear coefficients
-alpha <- 0.5 # intercept
-b_length_a <- -0.2 # effect of length before breakpoint
-b_length_b <- -0.1 # effect of length after breakpoint
+alpha <- 1 # intercept
+b_length_a <- -0.35 # effect of length before breakpoint (based on model data estimates)
+b_length_b <- -0.05 # effect of length after breakpoint (based on model data estimates)
 b_male <- 0.05 # effect of sex (being male)
 b_temperature <- 0.1 # effect of temperature
 b_trend <- 0.01 # effect of year of recapture
@@ -71,15 +74,15 @@ df[, "tag_year" := (recap_year + 3) - sample(x = 1:3, size = n_total,
 df[, "year" := as.numeric(recap_year)]
 
 # random intercept with tag year
-alpha_sd <- 1
+alpha_sd <- 0.3
 alpha_iid <- rnorm(n = length(unique(df$tag_year)), mean = 0, sd = alpha_sd) # effect of each year
 
 # random breakpoints
 brk_0 <- -1
 brk_male <- 0.2
 brk_temperature <- 0.2
-brk_year_sd <- 0.3
-brks_year <- rnorm(n = n_years, mean = 0,sd = brk_year_sd)
+brk_year_sd <- 0.1
+brks_year <- rnorm(n = n_years, mean = 0, sd = brk_year_sd)
 
 # response variables
 min_growth <- min(dat$growth_raised)
@@ -128,7 +131,8 @@ fit_m5 <- rstan::stan(file = here::here("stan_models", "m5.stan"),
                       iter = 4000,
                       init = 0,
                       cores = 4,
-                      seed = 1408)
+                      seed = 1408,
+                      control = list(adapt_delta = 0.95, stepsize = 0.01))
 # save
 save(fit_m5, file = here::here("results", "fits", "test", "m5_sim_rstan_NUTS.Rdata")) # Update if data changes
 
@@ -225,6 +229,7 @@ save(fit_m4, file = here::here("results", "fits", "test", "m4_sim_rstan_NUTS.Rda
 
 # get summary
 rstan::summary(fit_m4)
+test <- rstan::summary(fit_m4)
 m4_summary <- rstan::summary(fit_m4, pars = c("alpha", "alpha_iid", "omega", "b1a", "b1b", "sigma"))
 m4_summary <- m4_summary$summary %>% as.data.frame()
 m4_summary$name <- rownames(m4_summary)
@@ -243,6 +248,7 @@ loo::waic(log_lik_m4)
 m4_post <- as.array(fit_m4)
 m4_trace <- mcmc_trace(m4_post, pars = c("alpha", "alpha_iid[1]", "omega", "b1a", "b1b", "sigma"))
 m4_hist <- mcmc_hist(m4_post, pars = c("alpha", "alpha_iid[1]", "omega", "b1a", "b1b", "sigma"))
+m4_pairs <- mcmc_pairs(m4_post, pars = c("alpha", "alpha_iid[1]", "omega", "b1a", "b1b", "sigma"))
 print(m4_trace / m4_hist)
 # save
 png(here::here("plots", "m4_diagnostics.png"),
@@ -323,7 +329,7 @@ save(fit_m3c, file = here::here("results", "fits", "test", "m3c_sim_rstan_NUTS.R
 
 # get summary
 rstan::summary(fit_m3c)
-m3c_summary <- rstan::summary(fit_m3c, pars = c("alpha", "alpha_iid", "omega", "omega_sex", "b1a", "b1b", "sigma"))
+m3c_summary <- rstan::summary(fit_m3c, pars = c("alpha", "alpha_iid", "omega_0", "omega_sex", "b1a", "b1b", "sigma"))
 m3c_summary <- m3c_summary$summary %>% as.data.frame()
 m3c_summary$name <- rownames(m3c_summary)
 m3c_summary$type <- "estimated"
@@ -339,8 +345,8 @@ loo::waic(log_lik_m3c)
 
 # plots
 m3c_post <- as.array(fit_m3c)
-m3c_trace <- mcmc_trace(m3c_post, pars = c("alpha", "alpha_iid[1]", "omega", "omega_sex", "b1a", "b1b", "sigma"))
-m3c_hist <- mcmc_hist(m3c_post, pars = c("alpha", "alpha_iid[1]", "omega", "omega_sex", "b1a", "b1b", "sigma"))
+m3c_trace <- mcmc_trace(m3c_post, pars = c("alpha", "alpha_iid[1]", "omega_0", "omega_sex", "b1a", "b1b", "sigma"))
+m3c_hist <- mcmc_hist(m3c_post, pars = c("alpha", "alpha_iid[1]", "omega_0", "omega_sex", "b1a", "b1b", "sigma"))
 print(m3c_trace / m3c_hist)
 # save
 png(here::here("plots", "m3c_diagnostics.png"),
@@ -415,7 +421,7 @@ save(fit_m3b, file = here::here("results", "fits", "test", "m3b_sim_rstan_NUTS.R
 
 # get summary
 rstan::summary(fit_m3b)
-m3b_summary <- rstan::summary(fit_m3b, pars = c("alpha", "alpha_iid", "omega", "omega_recap", "b1a", "b1b", "sigma"))
+m3b_summary <- rstan::summary(fit_m3b, pars = c("alpha", "alpha_iid", "omega_0", "omega_recap", "b1a", "b1b", "sigma"))
 m3b_summary <- m3b_summary$summary %>% as.data.frame()
 m3b_summary$name <- rownames(m3b_summary)
 m3b_summary$type <- "estimated"
@@ -431,8 +437,9 @@ loo::waic(log_lik_m3b)
 
 # plots
 m3b_post <- as.array(fit_m3b)
-m3b_trace <- mcmc_trace(m3b_post, pars = c("alpha", "alpha_iid[1]", "omega", "omega_recap[1]", "b1a", "b1b", "sigma"))
-m3b_hist <- mcmc_hist(m3b_post, pars = c("alpha", "alpha_iid[1]", "omega", "omega_recap[1]", "b1a", "b1b", "sigma"))
+m3b_trace <- mcmc_trace(m3b_post, pars = c("alpha", "alpha_iid[1]", "omega_0", "omega_recap[1]", "b1a", "b1b", "sigma"))
+m3b_hist <- mcmc_hist(m3b_post, pars = c("alpha", "alpha_iid[1]", "omega_0", "omega_recap[1]", "b1a", "b1b", "sigma"))
+mcmc_pairs(m3b_post, pars = c("alpha", "alpha_iid[9]", "omega_0", "omega_recap[9]", "b1a", "b1b", "sigma"))
 print(m3b_trace / m3b_hist)
 # save
 png(here::here("plots", "m3b_diagnostics.png"),
@@ -513,7 +520,7 @@ save(fit_m3a, file = here::here("results", "fits", "test", "m3a_sim_rstan_NUTS.R
 
 # get summary
 rstan::summary(fit_m3a)
-m3a_summary <- rstan::summary(fit_m3a, pars = c("alpha", "alpha_iid", "omega", "omega_sex", "omega_recap", "b1a", "b1b", "sigma"))
+m3a_summary <- rstan::summary(fit_m3a, pars = c("alpha", "alpha_iid", "omega_0", "omega_sex", "omega_recap", "b1a", "b1b", "sigma"))
 m3a_summary <- m3a_summary$summary %>% as.data.frame()
 m3a_summary$name <- rownames(m3a_summary)
 m3a_summary$type <- "estimated"
@@ -529,8 +536,8 @@ loo::waic(log_lik_m3a)
 
 # plots
 m3a_post <- as.array(fit_m3a)
-m3a_trace <- mcmc_trace(m3a_post, pars = c("alpha", "alpha_iid[1]", "omega", "omega_sex", "omega_recap[1]", "b1a", "b1b", "sigma"))
-m3a_hist <- mcmc_hist(m3a_post, pars = c("alpha", "alpha_iid[1]", "omega", "omega_sex", "omega_recap[1]", "b1a", "b1b", "sigma"))
+m3a_trace <- mcmc_trace(m3a_post, pars = c("alpha", "alpha_iid[1]", "omega_0", "omega_sex", "omega_recap[1]", "b1a", "b1b", "sigma"))
+m3a_hist <- mcmc_hist(m3a_post, pars = c("alpha", "alpha_iid[1]", "omega_0", "omega_sex", "omega_recap[1]", "b1a", "b1b", "sigma"))
 print(m3a_trace / m3a_hist)
 # save
 png(here::here("plots", "m3a_diagnostics.png"),
