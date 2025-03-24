@@ -42,6 +42,7 @@ fit <- jags.fit(data = list(y = TOP_all_age_dat$Length_mm,
 
 # print
 print(summary(fit))
+plot(fit)
 
 # ages for fit
 age <- seq(from = min(TOP_all_age_dat$Age), to = max(TOP_all_age_dat$Age), l = n)
@@ -57,3 +58,26 @@ quants <- summary(fit)$quantiles[, c(1, 5), drop = FALSE]
 ci <- f(age, quants)
 sapply(1:2, function(v) points(ci[, v] ~ age,
                                type = "l", col = "red", lwd = 3, lty = "dashed"))
+
+# stan -------------------------------------------------------------------------
+
+# data
+mod_dat <- list(age = TOP_all_age_dat$Age,
+                length = TOP_all_age_dat$Length_mm,
+                N = nrow(TOP_all_age_dat))
+
+stan_fit <- rstan::stan(file = here::here("stan_models", "length_mod.stan"),
+                        model_name = "length_mod",
+                        data = mod_dat,
+                        chains = 3,
+                        iter = 1000,
+                        init = 1,
+                        cores = 4,
+                        seed = 1408,
+                        control = list(adapt_delta = 0.95,
+                                       stepsize = 0.01))
+plot(stan_fit)
+summary(stan_fit)
+loo::loo(stan_fit)
+log_lik <- loo::extract_log_lik(stan_fit)
+loo::waic(log_lik)

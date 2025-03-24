@@ -9,8 +9,12 @@
 # Ignore plots
 /plots/
 
-# Ignore results
-/results/
+# Ignore outputs
+/outputs/
+/reports/
+
+# Ignore archive
+/archive/
 
 # Ignore non-coding files
 *.xlsx
