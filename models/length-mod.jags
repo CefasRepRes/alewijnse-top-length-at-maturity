@@ -1,0 +1,17 @@
+model {
+
+  # priors
+  theta0 ~ dnorm(0, 0.001)
+  theta1 ~ dnorm(0, 0.001)
+  theta2 ~ dnorm(0, 0.001)
+  delta ~ dunif(1, 63)
+  gamma ~ dnorm(0, 0.001)T(0,)
+  tau ~ dgamma(0.01, 0.01)
+
+  # likelihood
+  for (i in 1:N) {
+    lp[i] = theta0 + theta1 * (age[i] - delta) + theta2 * sqrt((age[i] - delta)^2 + gamma)
+    length[i] ~ dnorm(lp[i], tau)
+  }
+
+}

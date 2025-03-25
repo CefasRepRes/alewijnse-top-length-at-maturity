@@ -31,6 +31,7 @@ y <- rnorm(n, lp, sd)
 
 # plot
 plot(TOP_all_age_dat$Length_mm ~ TOP_all_age_dat$Age)
+plot(y ~ lp)
 
 # fit
 fit <- jags.fit(data = list(y = TOP_all_age_dat$Length_mm,
@@ -77,7 +78,7 @@ stan_fit <- rstan::stan(file = here::here("stan_models", "length_mod.stan"),
                         control = list(adapt_delta = 0.95,
                                        stepsize = 0.01))
 plot(stan_fit)
-summary(stan_fit)
+summary(stan_fit, pars = names(coefs))$summary
 loo::loo(stan_fit)
 log_lik <- loo::extract_log_lik(stan_fit)
 loo::waic(log_lik)

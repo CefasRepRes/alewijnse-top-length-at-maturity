@@ -1,20 +1,57 @@
 #### Temp data ####
 
-test <- terra::rast(here::here("data", "cmems_mod_glo_phy_my_0.083deg_P1M-m_1742823252769.nc"))
-print(test)
+# load libraries
+library(terra)
+library(beepr)
+library(here)
+library(data.table)
 
-temp_data_res <- test
-terra::res(temp_data_res) <- c(0.2, 0.2)
-temp_data_res <- terra::resample(test, temp_data_res)
+# Load data --------------------------------------------------------------------
 
-# extract data for tag release location
-loc_temps <- as.data.table(terra::extract(temp_data_res,
-                                          TOP_all_age_effort_dat[, .(longitude_set_start, latitude_set_start)]))
-colnames(loc_temps) <- c('id', as.character(terra::time(temp_data_res)))
+# load data
+source("C:/Users/sa20/OneDrive - CEFAS/Projects/southern_ocean/r-projects/master-data-wrangling/code/data-prep-483-TOP-age.R")
 
-loc_temps_melt <- melt(loc_temps, id.vars = "id", variable.name = "date", value.name = "bottom_temp")
-#pp$id <- factor(pp$id)
-loc_temps_melt$Date <- as.Date(loc_temps_melt$date)
+## 1998 - 2021 data ============================================================
+
+# load
+dat_1 <- terra::rast(here::here("data", "cmems_mod_glo_phy_my_0.083deg_P1M-m_1742823252769.nc"))
+print(dat_1)
+
+# extract
+dat_1_res <- dat_1
+terra::res(dat_1_res) <- c(0.2, 0.2)
+dat_1_res <- terra::resample(dat_1, dat_1_res)
+dat_1_temps <- as.data.table(terra::extract(dat_1_res,
+                                            TOP_all_age_effort_dat[, .(longitude_set_start, latitude_set_start)]))
+colnames(dat_1_temps) <- c('id', as.character(terra::time(dat_1_res)))
+dat_1_temps <- melt(dat_1_temps,
+                    id.vars = "id",
+                    variable.name = "date",
+                    value.name = "bottom_temp")
+
+## 2021 - 2023 data ============================================================
+
+# load
+dat_2 <- terra::rast(here::here("data", "cmems_mod_glo_phy_myint_0.083deg_P1M-m_1742826010243.nc"))
+print(dat_2)
+
+# extract
+dat_2_res <- dat_2
+terra::res(dat_2_res) <- c(0.2, 0.2)
+dat_2_res <- terra::resample(dat_2, dat_2_res)
+dat_2_temps <- as.data.table(terra::extract(dat_2_res,
+                                            TOP_all_age_effort_dat[, .(longitude_set_start, latitude_set_start)]))
+colnames(dat_2_temps) <- c('id', as.character(terra::time(dat_2_res)))
+dat_2_temps <- melt(dat_2_temps,
+                    id.vars = "id",
+                    variable.name = "date",
+                    value.name = "bottom_temp")
+
+## combine =====================================================================
+
+loc_temps <- rbind(dat_1_temps, dat_2_temps)
+
+loc_temps$Date <- as.Date(loc_temps$date)
 
 # Match tag data and bottom temp -----------------------------------------------
 
@@ -23,14 +60,14 @@ TOP_all_age_effort_dat[, id := 1:.N]
 
 # extract month and year
 TOP_all_age_effort_dat[, month_year := format(datetime_set_start, "%Y-%m")]
-loc_temps_melt[, month_year := format(Date, "%Y-%m")]
+loc_temps[, month_year := format(Date, "%Y-%m")]
 
 # loop
 TOP_all_age_effort_dat[, temp := double()]
 for(i in 1:nrow(TOP_all_age_effort_dat)){
-  tag <- TOP_all_age_effort_dat[i, ]
-  temps <- loc_temps_melt[month_year == tag$month_year &
-                            id == tag$id]
+  dat <- TOP_all_age_effort_dat[i, ]
+  temps <- loc_temps[month_year == dat$month_year &
+                            id == dat$id]
   TOP_all_age_effort_dat[i, temp := temps$bottom_temp]
   print(i)
 };beep() # beep when done
