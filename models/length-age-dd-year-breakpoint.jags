@@ -1,0 +1,31 @@
+# length ~ age + dd + spawning year-specific breakpoint
+model {
+
+  # priors
+  intercept ~ dnorm(0, 0.001)
+  beta_sex[1] = 0
+  beta_sex[2] ~ dnorm(0, 0.001)
+  beta_dd1 ~ dnorm(0, 0.001)
+  beta_dd2 ~ dnorm(0, 0.001)
+  beta_age ~ dnorm(0, 0.001)
+  gamma ~ dnorm(0, 0.001)T(0,)
+  tau ~ dgamma(0.01, 0.01)
+
+  # spawning year-specific
+  for(i in 1:y){
+    # delta
+    delta[i] ~ dunif(min_dd, max_dd)
+
+    # effect
+    v[i] ~ dnorm(0, 0.001)
+  }
+
+  # likelihood
+  for (i in 1:n) {
+    lp[i] = intercept + v[year[i]] + beta_dd1 * (dd[i] - delta[year[i]]) + beta_dd2 * sqrt((dd[i] - delta[year[i]])^2 + gamma) + beta_age * age[i]
+    length[i] ~ dnorm(lp[i], tau)
+
+    # log likelihood
+  loglik[i] <- logdensity.norm(length[i], lp[i], tau)
+  }
+}

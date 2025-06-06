@@ -1,0 +1,24 @@
+# length ~ age + dd + spawning year
+model {
+
+  # priors
+  intercept ~ dnorm(0, 0.001)
+  beta_age ~ dnorm(0, 0.001)
+  tau ~ dgamma(0.01, 0.01)
+
+  # spawning year-specific
+  for(i in 1:y){
+
+    # effect
+    v[i] ~ dnorm(0, 0.001)
+  }
+
+  # likelihood
+  for (i in 1:n) {
+    lp[i] = intercept + v[year[i]] + beta_age * age[i]
+    length[i] ~ dnorm(lp[i], tau)
+
+    # log likelihood
+  loglik[i] <- logdensity.norm(length[i], lp[i], tau)
+  }
+}
