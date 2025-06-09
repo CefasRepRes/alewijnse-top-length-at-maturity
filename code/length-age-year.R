@@ -1,4 +1,4 @@
-### Age + dd + breakpoint stan model
+### Length ~ spawning year + age
 
 # libraries
 library(R2jags)
@@ -124,12 +124,14 @@ fit_func <- function(dat, coefs){
   coefs["intercept"] + coefs[paste0("v[", dat$spawn_year_index, "]")] + dat$Age * coefs["beta_age"]
 }
 
+
+
 # data for prediction
 n <- 100
-pred_dat <- data.frame(spawn_year_index = rep(1:max(dd_dat$spawn_year_index), length.out = n),
-                       Age = seq(from = min(dd_dat$Age), to = max(dd_dat$Age), l = n)) %>%
+max_index <- max(dd_dat$spawn_year_index)
+pred_dat <- data.frame(spawn_year_index = rep(1:max_index, length.out = n*max_index),
+                       Age = seq(from = min(dd_dat$Age), to = max(dd_dat$Age), l = n*max_index)) %>%
   data.table()
-pred_dat <- pred_dat[order(Age), ]
 
 coefs_mean <- coefs$Mean
 names(coefs_mean) <- rownames(coefs)
@@ -151,15 +153,18 @@ up_pred <- fit_func(dat = pred_dat, coefs = coefs_up)
 pred_dat <- cbind(pred_dat, up_pred)
 
 pred_plot <- ggplot() +
-  geom_point(data = dd_dat, aes(x = Age, y = Length), alpha = 0.2, col = "cornflowerblue") +
+  geom_point(data = dd_dat, aes(x = Age, y = Length),
+             alpha = 0.2, col = "grey40") +
   geom_line(data = pred_dat, aes(x = Age, y = mean_pred)) +
   geom_ribbon(data = pred_dat, aes(x = Age, ymin = low_pred, ymax = up_pred),
               alpha = 0.2) +
+  scale_x_continuous(breaks = seq(0, 30, 5)) +
+  facet_wrap(.~ spawn_year_index) +
   theme_bw()
 pred_plot
 
 png(here::here("outputs", "plots", "length-age-year",
                "pred.png"),
-    width = 6, height = 4, units = "in", res = 250)
+    width = 8, height = 8, units = "in", res = 250)
 pred_plot
 dev.off()

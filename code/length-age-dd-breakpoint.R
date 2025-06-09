@@ -1,4 +1,4 @@
-### Age + dd + breakpoint stan model
+### Length ~ dd + age + breakpoint
 
 # libraries
 library(dclone)
@@ -95,11 +95,10 @@ fit_func <- function(dat, coefs){
 }
 
 # data for prediction
-n <- 1000
-pred_dat <- data.frame(dd = seq(from = min(dd_dat$dd), to = max(dd_dat$dd), l = 100),
-                       Age = seq(from = min(dd_dat$Age), to = max(dd_dat$Age), l = 100)) %>%
+n <- 100
+pred_dat <- data.frame(dd = seq(from = min(dd_dat$dd), to = max(dd_dat$dd), l = n),
+                       Age = seq(from = min(dd_dat$Age), to = max(dd_dat$Age), l = n)) %>%
   data.table()
-pred_dat <- pred_dat[order(dd), ]
 
 coefs_mean <- coefs$Mean
 names(coefs_mean) <- rownames(coefs)
@@ -121,10 +120,18 @@ up_pred <- fit_func(dat = pred_dat, coefs = coefs_up)
 pred_dat <- cbind(pred_dat, up_pred)
 
 pred_plot <- ggplot() +
-  geom_point(data = dd_dat, aes(x = dd, y = Length), alpha = 0.2, col = "cornflowerblue") +
+  geom_point(data = dd_dat, aes(x = dd, y = Length),
+             alpha = 0.2, col = "grey40") +
   geom_line(data = pred_dat, aes(x = dd, y = mean_pred)) +
   geom_ribbon(data = pred_dat, aes(x = dd, ymin = low_pred, ymax = up_pred),
               alpha = 0.5) +
+  geom_vline(aes(xintercept = coefs_mean["delta"]),
+             linetype = "dashed") +
+  geom_vline(aes(xintercept = c(coefs_low["delta"],
+                                coefs_up["delta"])),
+             linetype = "dotted") +
+  ylab("Length (cm)") +
+  xlab("Degree days") +
   theme_bw()
 pred_plot
 

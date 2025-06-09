@@ -1,7 +1,6 @@
-### Age + dd + sex and year-specific breakpoint model
+### Length ~ year + sex + dd + age + sex-specific breakpoint
 
 # libraries
-library(rstan)
 library(R2jags)
 library(data.table)
 library(ggplot2)
@@ -45,17 +44,18 @@ mod_dat <- with(dd_dat, list(age = Age,
 str(mod_dat)
 
 # run model
-jags_fit <- R2jags::jags.parallel(model.file = here::here("models",
-                                                          "length-age-dd-sex-breakpoint-ranef-year.jags"),
-                                  parameters.to.save = c(params, "loglik"),
-                                  data = mod_dat,
-                                  n.chains = 3,
-                                  n.iter = 10000,
-                                  n.burnin = 5000,
-                                  jags.seed = 1408,
-                                  n.thin = 10);beepr::beep(sound = 8)
-
-saveRDS(jags_fit, here::here("outputs", "fits", "length-age-dd-sex-breakpoint-ranef-year-jags.Rds"))
+# jags_fit <- R2jags::jags.parallel(model.file = here::here("models",
+#                                                           "length-age-dd-sex-breakpoint-ranef-year.jags"),
+#                                   parameters.to.save = c(params, "loglik"),
+#                                   data = mod_dat,
+#                                   n.chains = 3,
+#                                   n.iter = 10000,
+#                                   n.burnin = 5000,
+#                                   jags.seed = 1408,
+#                                   n.thin = 10);beepr::beep(sound = 8)
+#
+# saveRDS(jags_fit, here::here("outputs", "fits", "length-age-dd-sex-breakpoint-ranef-year-jags.Rds"))
+jags_fit <- readRDS(here::here("outputs", "fits", "length-age-dd-sex-breakpoint-ranef-year-jags.Rds"))
 
 # check output
 print(jags_fit)
@@ -124,3 +124,76 @@ loglik_matrix <- as.matrix(loglik_array)
 # loo and WAIC
 loo::waic(loglik_matrix)
 loo::loo(loglik_matrix)
+
+# plot model -------------------------------------------------------------------
+
+jags_fit_summary <- summary(jags_fit_samples)
+coefs <- jags_fit_summary$statistics %>% as.data.frame()
+
+fit_func <- function(dat, coefs){
+    coefs["intercept"] + coefs[paste0("v[", dat$spawn_year_index, "]")] + coefs[paste0("beta_sex[", dat$Sex, "]")] + coefs["beta_dd1"] * (dat$dd - coefs[paste0("delta_sex[", dat$Sex, "]")]) + coefs["beta_dd2"] * sqrt((dat$dd - coefs[paste0("delta_sex[", dat$Sex, "]")])^2 + coefs["gamma"]) + dat$Age * coefs["beta_age"]
+}
+
+# data for prediction
+n <- 100
+max_index <- max(dd_dat$spawn_year_index)
+
+pred_dat <- expand.grid(spawn_year_index = 1:max_index, Sex = c(1, 2))
+pred_dat <- pred_dat[rep(1:nrow(pred_dat), each = n), ]
+pred_dat$dd <- rep(seq(min(dd_dat$dd), max(dd_dat$dd), length.out = n), times = nrow(pred_dat) / n)
+pred_dat$Age <- rep(seq(min(dd_dat$Age), max(dd_dat$Age), length.out = n), times = nrow(pred_dat) / n)
+pred_dat <- data.table(pred_dat)
+
+coefs_mean <- coefs$Mean
+names(coefs_mean) <- rownames(coefs)
+mean_pred <- fit_func(dat = pred_dat, coefs = coefs_mean)
+
+pred_dat <- cbind(pred_dat, mean_pred)
+
+coefs <- jags_fit_summary$quantiles %>% as.data.frame()
+coefs_low <- coefs$`2.5%`
+names(coefs_low) <- rownames(coefs)
+low_pred <- fit_func(dat = pred_dat, coefs = coefs_low)
+
+pred_dat <- cbind(pred_dat, low_pred)
+
+coefs_up <- coefs$`97.5%`
+names(coefs_up) <- rownames(coefs)
+up_pred <- fit_func(dat = pred_dat, coefs = coefs_up)
+
+pred_dat <- cbind(pred_dat, up_pred)
+
+Sex <- c("1" = "Female",
+         "2" = "Male")
+
+deltas <- data.frame(Sex = c("1", "2"),
+                     delta = c(coefs_mean["delta_sex[1]"],
+                               coefs_mean["delta_sex[2]"]),
+                     delta_up = c(coefs_up["delta_sex[1]"],
+                                  coefs_up["delta_sex[2]"]),
+                     delta_low = c(coefs_low["delta_sex[1]"],
+                                   coefs_low["delta_sex[2]"]))
+
+pred_plot <- ggplot() +
+    geom_point(data = dd_dat, aes(x = dd, y = Length,
+                                  col = as.factor(Sex)), alpha = 0.2) +
+    geom_line(data = pred_dat, aes(x = dd, y = mean_pred)) +
+    geom_ribbon(data = pred_dat, aes(x = dd, ymin = low_pred, ymax = up_pred),
+                alpha = 0.2) +
+    geom_vline(data = deltas, aes(xintercept = delta),
+               linetype = "dashed") +
+    geom_vline(data = deltas, aes(xintercept = delta_up),
+               linetype = "dotted") +
+    geom_vline(data = deltas, aes(xintercept = delta_low),
+               linetype = "dotted") +
+    scale_colour_manual(values = c("#BB5566", "#4477AA")) +
+    facet_wrap(.~ Sex + spawn_year_index) +
+    theme_bw() +
+    theme(legend.position = "none")
+pred_plot
+
+png(here::here("outputs", "plots", "length-age-dd-sex-breakpoint-ranef-year",
+               "pred.png"),
+    width = 8, height = 8, units = "in", res = 250)
+pred_plot
+dev.off()

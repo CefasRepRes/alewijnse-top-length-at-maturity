@@ -1,15 +1,18 @@
-# length ~ age + dd
+# length ~ dd + age + breakpoint
 model {
 
   # priors
   intercept ~ dnorm(0, 0.001)
-  beta_dd ~ dnorm(0, 0.001)
+  beta_dd1 ~ dnorm(0, 0.001)
+  beta_dd2 ~ dnorm(0, 0.001)
   beta_age ~ dnorm(0, 0.001)
+  gamma ~ dnorm(0, 0.001)T(0,)
   tau ~ dgamma(0.01, 0.01)
+  delta[i] ~ dunif(min_dd, max_dd)
 
   # likelihood
   for (i in 1:n) {
-    lp[i] = intercept + beta_dd * dd[i] + beta_age * age[i]
+    lp[i] = intercept + beta_dd1 * (dd[i] - delta) + beta_dd2 * sqrt((dd[i] - delta)^2 + gamma) + beta_age * age[i]
     length[i] ~ dnorm(lp[i], tau)
 
     # log likelihood

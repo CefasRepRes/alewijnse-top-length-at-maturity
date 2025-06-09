@@ -1,7 +1,6 @@
-### Age + dd + sex + breakpoint stan model
+### Length ~ sex + dd + age + sex-specific breakpoint
 
 # libraries
-library(rstan)
 library(R2jags)
 library(data.table)
 library(ggplot2)
@@ -14,27 +13,6 @@ dd_dat <- dd_dat[Sex %in% c("Male", "Female")]
 
 # subset to > 500 dd
 dd_dat <- dd_dat[dd <= 500]
-
-# # plot explanatory variables
-# dd_hist <- ggplot(data = dd_dat, aes(x = dd)) +
-#   geom_histogram(binwidth = 10) +
-#   theme_bw()
-# print(dd_hist)
-# length_plot <- ggplot(data = dd_dat, mapping = aes(y = Length, x = Age, colour = Sex)) +
-#   geom_point(alpha = 0.5) +
-#   theme(text = element_text(size = 16)) +
-#   theme_bw()
-# print(length_plot)
-# dd_plot <- ggplot(data = dd_dat, mapping = aes(y = Length, x = dd, colour = Sex)) +
-#   geom_point(alpha = 0.5) +
-#   theme(text = element_text(size = 16)) +
-#   theme_bw()
-# print(dd_plot)
-# dd_age_plot <- ggplot(data = dd_dat, mapping = aes(y = Age, x = dd, colour = Sex)) +
-#   geom_point(alpha = 0.5) +
-#   theme(text = element_text(size = 16)) +
-#   theme_bw()
-# print(dd_age_plot)
 
 # fit with JAGS ----------------------------------------------------------------
 
@@ -129,7 +107,6 @@ pred_dat <- data.frame(dd = seq(from = min(dd_dat$dd), to = max(dd_dat$dd), l = 
                        Sex = rep(c(1, 2), n / 2),
                        Age = seq(from = min(dd_dat$Age), to = max(dd_dat$Age), l = n)) %>%
   data.table()
-pred_dat <- pred_dat[order(dd), ]
 
 coefs_mean <- coefs$Mean
 names(coefs_mean) <- rownames(coefs)
@@ -150,17 +127,38 @@ up_pred <- fit_func(dat = pred_dat, coefs = coefs_up)
 
 pred_dat <- cbind(pred_dat, up_pred)
 
+Sex <- c("1" = "Female",
+         "2" = "Male")
+
+deltas <- data.frame(Sex = c("1", "2"),
+                     delta = c(coefs_mean["delta[1]"],
+                               coefs_mean["delta[2]"]),
+                     delta_up = c(coefs_up["delta[1]"],
+                                  coefs_up["delta[2]"]),
+                     delta_low = c(coefs_low["delta[1]"],
+                                   coefs_low["delta[2]"]))
+
 pred_plot <- ggplot() +
   geom_point(data = dd_dat, aes(x = dd, y = Length, col = as.factor(Sex)), alpha = 0.2) +
   geom_line(data = pred_dat, aes(x = dd, y = mean_pred, group = Sex)) +
-  geom_ribbon(data = pred_dat, aes(x = dd, ymin = low_pred, ymax = up_pred,
-                                   fill = as.factor(Sex)),
-              alpha = 0.5, col = "grey40") +
-  theme_bw()
+  geom_ribbon(data = pred_dat, aes(x = dd, ymin = low_pred, ymax = up_pred),
+              alpha = 0.2) +
+  geom_vline(data = deltas, aes(xintercept = delta),
+             linetype = "dashed") +
+  geom_vline(data = deltas, aes(xintercept = delta_up),
+             linetype = "dotted") +
+  geom_vline(data = deltas, aes(xintercept = delta_low),
+             linetype = "dotted") +
+  facet_wrap(.~ Sex) +
+  scale_colour_manual(values = c("#BB5566", "#4477AA")) +
+  facet_wrap(.~ Sex, labeller = as_labeller(Sex),
+             ncol = 1) +
+  theme_bw() +
+  theme(legend.position = "none")
 pred_plot
 
 png(here::here("outputs", "plots", "length-age-dd-sex-breakpoint",
                "pred.png"),
-    width = 6, height = 4, units = "in", res = 250)
+    width = 6, height = 6, units = "in", res = 250)
 pred_plot
 dev.off()

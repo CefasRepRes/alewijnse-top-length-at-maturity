@@ -14,7 +14,7 @@ model {
   # spawning year-specific
   for(i in 1:y){
     # delta
-    delta[i] ~ dunif(min_dd, max_dd)
+    delta_year[i] ~ dunif(min_dd, max_dd)
 
     # effect
     v[i] ~ dnorm(0, 0.001)
@@ -22,7 +22,7 @@ model {
 
   # likelihood
   for (i in 1:n) {
-    lp[i] = intercept + v[year[i]] + beta_dd1 * (dd[i] - delta[year[i]]) + beta_dd2 * sqrt((dd[i] - delta[year[i]])^2 + gamma) + beta_age * age[i]
+    lp[i] = intercept + v[year[i]] + beta_dd1 * (dd[i] - delta_year[year[i]]) + beta_dd2 * sqrt((dd[i] - delta_year[year[i]])^2 + gamma) + beta_age * age[i]
     length[i] ~ dnorm(lp[i], tau)
 
     # log likelihood

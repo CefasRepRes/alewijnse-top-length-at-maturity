@@ -1,4 +1,4 @@
-### Age + dd + breakpoint stan model
+### Length ~ sex JAGS model
 
 # libraries
 library(R2jags)
@@ -96,9 +96,8 @@ fit_func <- function(dat, coefs){
 
 # data for prediction
 n <- 100
-pred_dat <- data.frame(Sex = rep(c(1, 2), n / 2)) %>%
+pred_dat <- data.frame(Sex = rep(c(1, 2), length.out = n)) %>%
   data.table()
-pred_dat <- pred_dat[order(Sex), ]
 
 coefs_mean <- coefs$Mean
 names(coefs_mean) <- rownames(coefs)
@@ -120,12 +119,17 @@ up_pred <- fit_func(dat = pred_dat, coefs = coefs_up)
 pred_dat <- cbind(pred_dat, up_pred)
 
 pred_plot <- ggplot() +
-  geom_point(data = dd_dat, aes(x = as.factor(Sex), y = Length), alpha = 0.2, col = "cornflowerblue",
-             position = "jitter") +
+  geom_violin(data = dd_dat, aes(x = as.factor(Sex), y = Length,
+                                 fill = as.factor(Sex)),
+             alpha = 0.2) +
   geom_line(data = pred_dat, aes(x = Sex, y = mean_pred)) +
   geom_ribbon(data = pred_dat, aes(x = Sex, ymin = low_pred, ymax = up_pred),
               alpha = 0.2) +
-  theme_bw()
+  xlab("Sex") +
+  scale_x_discrete(labels = c("Female", "Male")) +
+  scale_fill_manual(values = c("#BB5566", "#4477AA")) +
+  theme_bw() +
+  theme(legend.position = "none")
 pred_plot
 
 png(here::here("outputs", "plots", "length-sex",

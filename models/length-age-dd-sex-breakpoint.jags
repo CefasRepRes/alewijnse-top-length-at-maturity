@@ -1,4 +1,4 @@
-# length ~ age + dd + sex-specific breakpoint
+# length ~ sex + dd + age + sex-specific breakpoint
 model {
 
   # priors

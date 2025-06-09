@@ -1,7 +1,6 @@
-### Age + dd + year-specific breakpoint model
+###  Length ~ year + sex + dd + age + spawning-year-specific breakpoint
 
 # libraries
-library(rstan)
 library(R2jags)
 library(data.table)
 library(ggplot2)
@@ -9,106 +8,10 @@ library(beepr)
 
 # load data
 dd_dat <- data.table::fread(here::here("data", 'age_dat_w_dd_base0.csv'))
-dd_dat <- dd_dat[year %in% c("Male", "Female")]
+dd_dat <- dd_dat[Sex %in% c("Male", "Female")]
 
 # subset to > 500 dd
 dd_dat <- dd_dat[dd <= 500]
-
-# plot explanatory variables
-dd_hist <- ggplot(data = dd_dat, aes(x = dd)) +
-  geom_histogram(binwidth = 10) +
-  theme_bw()
-print(dd_hist)
-length_plot <- ggplot(data = dd_dat, mapping = aes(y = Length, x = Age, colour = year)) +
-  geom_point(alpha = 0.5) +
-  theme(text = element_text(size = 16)) +
-  theme_bw()
-print(length_plot)
-dd_plot <- ggplot(data = dd_dat, mapping = aes(y = Length, x = dd, colour = year)) +
-  geom_point(alpha = 0.5) +
-  theme(text = element_text(size = 16)) +
-  theme_bw()
-print(dd_plot)
-dd_age_plot <- ggplot(data = dd_dat, mapping = aes(y = Age, x = dd, colour = year)) +
-  geom_point(alpha = 0.5) +
-  theme(text = element_text(size = 16)) +
-  theme_bw()
-print(dd_age_plot)
-
-# fit with stan ----------------------------------------------------------------
-
-# # recode year
-# dd_dat[, year := ifelse(year == "Female", 0, 1)]
-#
-# # list coefs
-# coefs <- c("alpha", "beta_dd1", "beta_dd2",
-#            "beta_age", "beta_year",
-#            "delta_0", "delta_year", "gamma", "sigma")
-#
-
-# # data
-# mod_dat <- with(dd_dat, list(age = Age,
-#                              length = Length,
-#                              year = year,
-#                              dd = dd,
-#                              min_dd = min(dd),
-#                              max_dd = max(dd),
-#                              mean_dd = mean(dd),
-#                              sd_dd = sd(dd),
-#                              N = nrow(dd_dat)))
-#
-# # run model
-# stan_fit <- rstan::stan(file = here::here("models", "length-age-dd-year-breakpoint.stan"),
-#                         model_name = "length_mod",
-#                         data = mod_dat,
-#                         chains = 3,
-#                         iter = 10000,
-#                         init = 0,
-#                         cores = 3,
-#                         seed = 1408,
-#                         thin = 10)
-#
-# # save
-# saveRDS(stan_fit,
-#         file = here::here("outputs", "fits", "length-age-dd-year-breakpoint-thin.stan"))
-#
-# # get summary
-# summary(stan_fit, pars = coefs)$summary
-#
-# # traceplot
-# traceplot <- bayesplot::mcmc_trace(stan_fit,
-#                                    pars = coefs)
-# traceplot
-# png(here::here("outputs", "plots", "length-age-dd-year-breakpoint",
-#                "traceplot.png"),
-#     width = 8, height = 8, units = "in", res = 250)
-# traceplot
-# dev.off()
-#
-# # density
-# density <- bayesplot::mcmc_dens_overlay(stan_fit,
-#                                         pars = coefs)
-# density
-# png(here::here("outputs", "plots", "length-age-dd-year-breakpoint",
-#                "density.png"),
-#     width = 8, height = 6, units = "in", res = 250)
-# density
-# dev.off()
-#
-# # acf
-# acf <- bayesplot::mcmc_acf_bar(stan_fit,
-#                                pars = coefs)
-# acf
-# png(here::here("outputs", "plots", "length-age-dd-year-breakpoint",
-#                "acf.png"),
-#     width = 8, height = 6, units = "in", res = 250)
-# acf
-# dev.off()
-#
-# # check LOO and WAIC work
-# loo::loo(stan_fit)
-# log_lik <- loo::extract_log_lik(stan_fit)
-# loo::waic(log_lik)
 
 # fit with JAGS ----------------------------------------------------------------
 
@@ -122,8 +25,8 @@ dd_dat[, spawn_year_index := as.integer(factor(spawn_year, levels = sort(unique(
 params <- c("intercept", "v", "beta_dd1",
             "beta_dd2", "beta_age", "delta", "gamma", "tau")
 pars_main <- c("intercept", "beta_dd1",
-          "beta_dd2", "beta_age",
-          "gamma", "tau")
+               "beta_dd2", "beta_age",
+               "gamma", "tau")
 pars_v <- paste0("v[", 1:length(unique(dd_dat$spawn_year)), "]")
 pars_delta <- paste0("delta[", 1:length(unique(dd_dat$spawn_year)), "]")
 
@@ -138,17 +41,18 @@ mod_dat <- with(dd_dat, list(age = Age,
 str(mod_dat)
 
 # run model
-jags_fit <- R2jags::jags.parallel(model.file = here::here("models",
-                                                          "length-age-dd-year-breakpoint.jags"),
-                                  parameters.to.save = c(params, "loglik"),
-                                  data = mod_dat,
-                                  n.chains = 3,
-                                  n.iter = 10000,
-                                  n.burnin = 5000,
-                                  jags.seed = 1408,
-                                  n.thin = 10);beepr::beep(sound = 8)
+# jags_fit <- R2jags::jags.parallel(model.file = here::here("models",
+#                                                           "length-age-dd-year-breakpoint.jags"),
+#                                   parameters.to.save = c(params, "loglik"),
+#                                   data = mod_dat,
+#                                   n.chains = 3,
+#                                   n.iter = 10000,
+#                                   n.burnin = 5000,
+#                                   jags.seed = 1408,
+#                                   n.thin = 10);beepr::beep(sound = 8)
 
-saveRDS(jags_fit, here::here("outputs", "fits", "length-age-dd-year-breakpoint-jags.Rds"))
+# saveRDS(jags_fit, here::here("outputs", "fits", "length-age-dd-year-breakpoint-jags.Rds"))
+jags_fit <- readRDS(here::here("outputs", "fits", "length-age-dd-year-breakpoint-jags.Rds"))
 
 # check output
 print(jags_fit)
@@ -241,3 +145,69 @@ loglik_matrix <- as.matrix(loglik_array)
 # loo and WAIC
 loo::waic(loglik_matrix)
 loo::loo(loglik_matrix)
+
+# plot model -------------------------------------------------------------------
+
+jags_fit_summary <- summary(jags_fit_samples)
+coefs <- jags_fit_summary$statistics %>% as.data.frame()
+
+fit_func <- function(dat, coefs){
+    coefs["intercept"] + coefs[paste0("v[", dat$spawn_year_index, "]")] + coefs["beta_dd1"] * (dat$dd - coefs[paste0("delta[", dat$spawn_year_index, "]")]) + coefs["beta_dd2"] * sqrt((dat$dd - coefs[paste0("delta[", dat$spawn_year_index, "]")])^2 + coefs["gamma"]) + dat$Age * coefs["beta_age"]
+}
+
+# data for prediction
+n <- 100
+max_index <- max(dd_dat$spawn_year_index)
+
+pred_dat <- expand.grid(spawn_year_index = 1:max_index, Sex = c(1, 2))
+pred_dat <- pred_dat[rep(1:nrow(pred_dat), each = n), ]
+pred_dat$dd <- rep(seq(min(dd_dat$dd), max(dd_dat$dd), length.out = n), times = nrow(pred_dat) / n)
+pred_dat$Age <- rep(seq(min(dd_dat$Age), max(dd_dat$Age), length.out = n), times = nrow(pred_dat) / n)
+pred_dat <- data.table(pred_dat)
+
+coefs_mean <- coefs$Mean
+names(coefs_mean) <- rownames(coefs)
+mean_pred <- fit_func(dat = pred_dat, coefs = coefs_mean)
+
+pred_dat <- cbind(pred_dat, mean_pred)
+
+coefs <- jags_fit_summary$quantiles %>% as.data.frame()
+coefs_low <- coefs$`2.5%`
+names(coefs_low) <- rownames(coefs)
+low_pred <- fit_func(dat = pred_dat, coefs = coefs_low)
+
+pred_dat <- cbind(pred_dat, low_pred)
+
+coefs_up <- coefs$`97.5%`
+names(coefs_up) <- rownames(coefs)
+up_pred <- fit_func(dat = pred_dat, coefs = coefs_up)
+
+pred_dat <- cbind(pred_dat, up_pred)
+
+deltas <- expand.grid(spawn_year_index = 1:max_index, Sex = c(1, 2))
+deltas$delta <- coefs_mean[paste0("delta[", deltas$spawn_year_index, "]")]
+deltas$delta_up <- coefs_up[paste0("delta[", deltas$spawn_year_index, "]")]
+deltas$delta_low <- coefs_low[paste0("delta[", deltas$spawn_year_index, "]")]
+
+pred_plot <- ggplot() +
+    geom_point(data = dd_dat, aes(x = dd, y = Length, alpha = 0.2),
+               col = "grey40")+
+    geom_line(data = pred_dat, aes(x = dd, y = mean_pred)) +
+    geom_ribbon(data = pred_dat, aes(x = dd, ymin = low_pred, ymax = up_pred),
+                alpha = 0.2) +
+    geom_vline(data = deltas, aes(xintercept = delta),
+               linetype = "dashed") +
+    geom_vline(data = deltas, aes(xintercept = delta_up),
+               linetype = "dotted") +
+    geom_vline(data = deltas, aes(xintercept = delta_low),
+               linetype = "dotted") +
+    facet_wrap(.~ spawn_year_index) +
+    theme_bw() +
+    theme(legend.position = "none")
+pred_plot
+
+png(here::here("outputs", "plots", "length-age-dd-year-breakpoint",
+               "pred.png"),
+    width = 8, height = 8, units = "in", res = 250)
+pred_plot
+dev.off()

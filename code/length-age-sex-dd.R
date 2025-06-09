@@ -1,4 +1,4 @@
-### Age + dd + breakpoint stan model
+### Length ~ sex + dd + age JAGS model
 
 # libraries
 library(dclone)
@@ -101,7 +101,7 @@ fit_func <- function(dat, coefs){
 # data for prediction
 n <- 100
 pred_dat <- data.frame(dd = seq(from = min(dd_dat$dd), to = max(dd_dat$dd), l = n),
-                       Sex = rep(c(1, 2), n / 2),
+                       Sex = rep(c(1, 2), length.out = n),
                        Age = seq(from = min(dd_dat$Age), to = max(dd_dat$Age), l = n)) %>%
   data.table()
 pred_dat <- pred_dat[order(dd), ]
@@ -125,13 +125,21 @@ up_pred <- fit_func(dat = pred_dat, coefs = coefs_up)
 
 pred_dat <- cbind(pred_dat, up_pred)
 
+Sex <- c("1" = "Female",
+         "2" = "Male")
+
 pred_plot <- ggplot() +
   geom_point(data = dd_dat, aes(x = dd, y = Length, col = as.factor(Sex)), alpha = 0.2) +
-  geom_line(data = pred_dat, aes(x = dd, y = mean_pred, group = Sex)) +
-  geom_ribbon(data = pred_dat, aes(x = dd, ymin = low_pred, ymax = up_pred,
-                                   fill = as.factor(Sex)),
-              alpha = 0.5, col = "grey40") +
-  theme_bw()
+  geom_line(data = pred_dat, aes(x = dd, y = mean_pred)) +
+  geom_ribbon(data = pred_dat, aes(x = dd, ymin = low_pred, ymax = up_pred),
+              alpha = 0.2) +
+  facet_wrap(.~ Sex) +
+  scale_colour_manual(values = c("#BB5566", "#4477AA")) +
+  facet_wrap(.~ Sex, labeller = as_labeller(Sex)) +
+  xlab("Degree days") +
+  ylab("Length (cm)") +
+  theme_bw() +
+  theme(legend.position = "none")
 pred_plot
 
 png(here::here("outputs", "plots", "length-age-sex-dd",

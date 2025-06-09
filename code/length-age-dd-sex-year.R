@@ -131,12 +131,13 @@ fit_func <- function(dat, coefs){
 
 # data for prediction
 n <- 100
-pred_dat <- data.frame(spawn_year_index = rep(1:max(dd_dat$spawn_year_index), length.out = n),
-                       Sex = rep(1:2, length.out = n),
-                       dd = seq(from = min(dd_dat$dd), to = max(dd_dat$dd), l = n),
-                       Age = seq(from = min(dd_dat$Age), to = max(dd_dat$Age), l = n)) %>%
-  data.table()
-pred_dat <- pred_dat[order(dd), ]
+max_index <- max(dd_dat$spawn_year_index)
+
+pred_dat <- expand.grid(spawn_year_index = 1:max_index, Sex = c(1, 2))
+pred_dat <- pred_dat[rep(1:nrow(pred_dat), each = n), ]
+pred_dat$dd <- rep(seq(min(dd_dat$dd), max(dd_dat$dd), length.out = n), times = nrow(pred_dat) / n)
+pred_dat$Age <- rep(seq(min(dd_dat$Age), max(dd_dat$Age), length.out = n), times = nrow(pred_dat) / n)
+pred_dat <- data.table(pred_dat)
 
 coefs_mean <- coefs$Mean
 names(coefs_mean) <- rownames(coefs)
@@ -158,16 +159,19 @@ up_pred <- fit_func(dat = pred_dat, coefs = coefs_up)
 pred_dat <- cbind(pred_dat, up_pred)
 
 pred_plot <- ggplot() +
-  geom_point(data = dd_dat, aes(x = dd, y = Length), alpha = 0.2, col = "cornflowerblue") +
+  geom_point(data = dd_dat, aes(x = dd, y = Length,
+                                col = as.factor(Sex)), alpha = 0.2) +
   geom_line(data = pred_dat, aes(x = dd, y = mean_pred)) +
   geom_ribbon(data = pred_dat, aes(x = dd, ymin = low_pred, ymax = up_pred),
               alpha = 0.2) +
-  facet_wrap(. ~spawn_year_index) +
-  theme_bw()
+  scale_colour_manual(values = c("#BB5566", "#4477AA")) +
+  facet_wrap(.~ Sex + spawn_year_index) +
+  theme_bw() +
+  theme(legend.position = "none")
 pred_plot
 
 png(here::here("outputs", "plots", "length-age-dd-sex-year",
                "pred.png"),
-    width = 6, height = 4, units = "in", res = 250)
+    width = 8, height = 8, units = "in", res = 250)
 pred_plot
 dev.off()
