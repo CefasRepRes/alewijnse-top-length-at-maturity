@@ -1,0 +1,27 @@
+# M2
+# length ~ sex + dd + age
+
+model {
+
+  # priors
+  intercept ~ dnorm(0, 0.001)
+  beta_sex[1] = 0
+  beta_sex[2] ~ dnorm(0, 0.001)
+  beta_dd ~ dnorm(0, 0.001)
+  beta_age ~ dnorm(0, 0.001)
+  alpha_sigma ~ dnorm(0, 0.001)
+  beta_sigma ~ dnorm(0, 0.001)
+
+  # likelihood
+  for (i in 1:n) {
+    lp[i] = intercept + beta_sex[sex[i]] + beta_dd * dd[i] + beta_age * age[i]
+    log_sigma[i] <- alpha_sigma + beta_sigma * lp[i]
+    sigma[i] <- exp(log_sigma[i])
+    prec[i] <- 1 / pow(sigma[i], 2)
+
+    length[i] ~ dnorm(lp[i], prec[i])
+
+    # log likelihood
+  loglik[i] <- logdensity.norm(length[i], lp[i], prec[i])
+  }
+}

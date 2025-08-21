@@ -12,10 +12,10 @@ library(ggplot2)
 # load data
 source("C:/Users/sa20/OneDrive - CEFAS/Projects/southern_ocean/r-projects/master-data-wrangling/code/data-prep-483-TOP-age.R")
 
-## 1998 - 2021 data ============================================================
+## 2021 + data =================================================================
 
 # load
-dat_1 <- terra::rast(here::here("data", "cmems_mod_glo_phy_my_0.083deg_P1M-m_1742823252769.nc"))
+dat_1 <- terra::rast(here::here("data", "cmems_mod_glo_phy_myint_0.083deg_P1M-m_1755161088214.nc"))
 print(dat_1)
 
 # extract
@@ -30,10 +30,10 @@ dat_1_temps <- melt(dat_1_temps,
                     variable.name = "date",
                     value.name = "bottom_temp")
 
-## 2021 - 2023 data ============================================================
+## 1993 - 2021 data ============================================================
 
 # load
-dat_2 <- terra::rast(here::here("data", "cmems_mod_glo_phy_myint_0.083deg_P1M-m_1742826010243.nc"))
+dat_2 <- terra::rast(here::here("data", "cmems_mod_glo_phy_my_0.083deg_P1M-m_1755161051045.nc"))
 print(dat_2)
 
 # extract
@@ -48,34 +48,21 @@ dat_2_temps <- melt(dat_2_temps,
                     variable.name = "date",
                     value.name = "bottom_temp")
 
-## 1993 - 1998 data ============================================================
-
-# load
-dat_3 <- terra::rast(here::here("data", "cmems_mod_glo_phy_my_0.083deg_P1D-m_1747064766431.nc"))
-print(dat_3)
-
-# extract
-dat_3_res <- dat_3
-terra::res(dat_3_res) <- c(0.2, 0.2)
-dat_3_res <- terra::resample(dat_3, dat_3_res)
-dat_3_temps <- as.data.table(terra::extract(dat_3_res,
-                                            TOP_all_age_effort_dat[, .(longitude_set_start, latitude_set_start)]))
-colnames(dat_3_temps) <- c('id', as.character(terra::time(dat_3_res)))
-dat_3_temps <- melt(dat_3_temps,
-                    id.vars = "id",
-                    variable.name = "date",
-                    value.name = "bottom_temp")
-
 ## combine =====================================================================
 
-loc_temps <- rbind(dat_1_temps, dat_2_temps) %>%
-  rbind(dat_3_temps)
+# combine
+loc_temps <- rbind(dat_1_temps, dat_2_temps)
 
+# remove any duplicates
 loc_temps <- unique(loc_temps)
 
+# format dates
 loc_temps$Date <- as.character(loc_temps$date)
 loc_temps$Date <- as.Date(lubridate::fast_strptime(loc_temps$Date, "%Y-%m-%d"))
 str(loc_temps)
+
+ggplot(loc_temps[seq(1, nrow(loc_temps), 100)], aes(x = date, y = bottom_temp)) +
+  geom_point(alpha = 0.2)
 
 # Match tag data and bottom temp -----------------------------------------------
 
@@ -107,6 +94,17 @@ TOP_all_age_effort_dat <- TOP_all_age_effort_dat[Age <= 30]
 # filter to those born after 1993
 TOP_all_age_effort_dat <- TOP_all_age_effort_dat[birth_date >= as.Date("1993-01-01")]
 
+# calculate age in months
+TOP_all_age_effort_dat[, age_months := lubridate::interval(birth_date_july,
+                                                           catch_date) %/% months(1)]
+
+# save coordinates
+coords <- unique(TOP_all_age_effort_dat[, .(latitude_set_start,
+                                            longitude_set_start,
+                                            Year)])
+data.table::fwrite(coords, here::here("data",
+                                      "TOP_coords_years.csv"))
+
 # set base temp
 base_temp <- 0
 
@@ -124,9 +122,12 @@ for(i in 1:nrow(TOP_all_age_effort_dat)){
   print(i)
 };beep() # beep when done
 
+# calculate scaled dd
+TOP_all_age_effort_dat[, dd_scaled := dd - age_months]
+
 # write out data with av_temp
 data.table::fwrite(TOP_all_age_effort_dat, here::here("data",
-                                                      paste0("age_dat_w_dd_base", base_temp, ".csv")))
+                                                      paste0("age_dat_w_dd_base_", base_temp, ".csv")))
 
 # plot -------------------------------------------------------------------------
 
@@ -136,8 +137,7 @@ ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = dd, y = Length, col = Sex)) 
   geom_smooth(method = "lm") +
   theme_bw()
 
-ggplot(TOP_all_age_effort_dat[!is.na(Sex) &
-                                dd < 1], aes(x = dd, y = Length, col = Sex)) +
+ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = dd_scaled, y = Length, col = Sex)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
   theme_bw()
@@ -147,7 +147,7 @@ ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = Age, y = dd, col = Sex)) +
   geom_smooth(method = "lm") +
   theme_bw()
 
-ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = dd_avg, y = Length, col = Sex)) +
+ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = Age, y = dd_scaled, col = Sex)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
   theme_bw()

@@ -1,0 +1,37 @@
+# M3a
+# length ~ sex + dd + age + sex-specific breakpoint
+
+model {
+
+  # priors
+  intercept ~ dnorm(0, 0.001)
+  beta_sex[1] = 0
+  beta_sex[2] ~ dnorm(0, 0.001)
+  beta_age1 ~ dnorm(0, 0.001)
+  beta_age2 ~ dnorm(0, 0.001)
+  beta_dd ~ dnorm(0, 0.001)
+  gamma ~ dnorm(0, 0.001)T(0,)
+  alpha_sigma ~ dnorm(0, 0.001)
+  beta_sigma ~ dnorm(0, 0.001)
+
+
+  # sex-specific
+  for(i in 1:2){
+    delta[i] ~ dunif(min_age, max_age)
+  }
+
+
+  for (i in 1:n) {
+
+    # likelihood
+    lp[i] = intercept + beta_sex[sex[i]] + beta_dd * dd[i] + beta_age1 * (age[i] - delta[sex[i]]) + beta_age2 * sqrt((age[i] - delta[sex[i]])^2 + gamma)
+    log_sigma[i] <- alpha_sigma + beta_sigma * lp[i]
+    sigma[i] <- exp(log_sigma[i])
+    prec[i] <- 1 / pow(sigma[i], 2)
+
+    length[i] ~ dnorm(lp[i], prec[i])
+
+    # log likelihood
+    loglik[i] <- logdensity.norm(length[i], lp[i], prec[i])
+  }
+}

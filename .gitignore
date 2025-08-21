@@ -26,3 +26,6 @@
 *.csv
 *.csl
 *.bib
+*.nc
+*.qmd
+
