@@ -16,9 +16,9 @@ dd_dat[, Sex := ifelse(Sex == "Female", 1, 2)]
 
 # list params
 params <- c("intercept", "beta_sex",
-            "beta_age", "alpha_sigma", "beta_sigma")
+            "beta_age", "sigma")
 pars <- c("intercept", "beta_sex[1]", "beta_sex[2]",
-          "beta_age", "alpha_sigma", "beta_sigma")
+          "beta_age", "sigma")
 
 mod_dat <- with(dd_dat, list(age = age_months,
                              length = Length,
@@ -27,17 +27,17 @@ mod_dat <- with(dd_dat, list(age = age_months,
 str(mod_dat)
 
 # run model
-jags_fit <- R2jags::jags.parallel(model.file = here::here("models",
-                                                          "M0-var.jags"),
-                                  parameters.to.save = c(params, "loglik"),
-                                  data = mod_dat,
-                                  n.chains = 3,
-                                  n.iter = 100000,
-                                  n.burnin = 50000,
-                                  jags.seed = 1408,
-                                  n.thin = 100);beepr::beep()
-
-saveRDS(jags_fit, here::here("outputs", "fits", "M0-jags-var.Rds"))
+# jags_fit <- R2jags::jags.parallel(model.file = here::here("models",
+#                                                           "M0-var-2.jags"),
+#                                   parameters.to.save = c(params, "loglik"),
+#                                   data = mod_dat,
+#                                   n.chains = 3,
+#                                   n.iter = 100000,
+#                                   n.burnin = 50000,
+#                                   jags.seed = 1408,
+#                                   n.thin = 100);beepr::beep()
+#
+# saveRDS(jags_fit, here::here("outputs", "fits", "M0-jags-var.Rds"))
 jags_fit <- readRDS(here::here("outputs", "fits", "M0-jags-var.Rds"))
 
 # check output
@@ -117,12 +117,9 @@ pred_matrix <- matrix(NA, nrow = nrow(pred_dat), ncol = n_sims)
 for (i in 1:n_sims) {
   coefs_i <- as.numeric(jags_fit_samples[i, ])
   names(coefs_i) <- colnames(jags_fit_samples)
+  st_dev <- coefs_i["sigma"] * sqrt(pred_dat$Age)
   lp <- fit_func(dat = pred_dat, coefs = coefs_i)
-
-  log_sigma <- coefs_i["alpha_sigma"] + coefs_i["beta_sigma"] * lp
-  sigma <- exp(log_sigma)
-
-  pred_matrix[, i] <- rnorm(n = length(lp), mean = lp, sd = sigma)
+  pred_matrix[, i] <- rnorm(n = length(lp), mean = lp, sd = st_dev)
 }
 
 # extract
@@ -176,13 +173,8 @@ dd_dat[, fit_vals := fit_func(dat = dd_dat, coefs = coefs_mean)]
 # get residuals
 dd_dat[, resid_vals := Length - fit_vals]
 
-# fit sigma
-fit_sigma <- function(dat, coefs){
-  exp(coefs["alpha_sigma"] + coefs["beta_sigma"] * dat$fit_vals)
-}
-
 # standardise residuals
-dd_dat[, stan_res := resid_vals / fit_sigma(dat = dd_dat, coefs = coefs_mean)]
+dd_dat[, stan_res := resid_vals / (coefs_i["sigma"] * sqrt(age_months))]
 
 ggplot(data = dd_dat, aes(x = fit_vals, y = resid_vals)) +
   geom_point(alpha = 0.2) +
