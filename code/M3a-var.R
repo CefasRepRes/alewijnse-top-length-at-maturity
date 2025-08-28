@@ -169,7 +169,8 @@ pred_plot <- ggplot() +
   geom_vline(data = deltas, aes(xintercept = delta_low),
              linetype = "dotted") +
   scale_color_viridis_c(option = "inferno",
-                        name = "Scaled \ndegree days") +
+                        name = "Scaled \ndegree months",
+                        end = 0.9) +
   xlab("Age (months)") +
   ylab("Length (cm)") +
   facet_wrap(.~ Sex) +
@@ -182,6 +183,90 @@ png(here::here("outputs", "plots", "M3a-var",
                "pred.png"),
     width = 6, height = 6, units = "in", res = 250)
 pred_plot
+dev.off()
+
+# predict with min, mean and max scaled dd -------------------------------------
+
+# get values
+min_s_dd <- min(mod_dat$dd)
+max_s_dd <- max(mod_dat$dd)
+mean_s_dd <- mean(mod_dat$dd)
+
+# data for prediction
+pred_dd <- data.frame(Sex = rep(c(1, 2), n / 2),
+                      Age = seq(from = min(dd_dat$age_months), to = max(dd_dat$age_months), l = n)) %>%
+  data.table()
+
+# modify fit function
+fit_func <- function(dat, coefs, dd){
+  coefs["intercept"] + coefs[paste0("beta_sex[", dat$Sex, "]")] + coefs["beta_dd"] * dd +
+    coefs["beta_age1"] * (dat$Age - coefs[paste0("delta[", dat$Sex, "]")]) +
+    coefs["beta_age2"] * sqrt((dat$Age - coefs[paste0("delta[", dat$Sex, "]")])^2 + coefs["gamma"])
+}
+
+# min
+pred_matrix <- matrix(NA, nrow = nrow(pred_dat), ncol = n_sims)
+for (i in 1:n_sims) {
+  coefs_i <- as.numeric(jags_fit_samples[i, ])
+  names(coefs_i) <- colnames(jags_fit_samples)
+  st_dev <- coefs_i["sigma"] * sqrt(pred_dd$Age)
+  lp <- fit_func(dat = pred_dat, coefs = coefs_i, dd = min_s_dd)
+  pred_matrix[, i] <- rnorm(n = length(lp), mean = lp, sd = st_dev)
+}
+pred_dd[, Min := rowMeans(pred_matrix)] # save
+
+# mean
+pred_matrix <- matrix(NA, nrow = nrow(pred_dat), ncol = n_sims)
+for (i in 1:n_sims) {
+  coefs_i <- as.numeric(jags_fit_samples[i, ])
+  names(coefs_i) <- colnames(jags_fit_samples)
+  st_dev <- coefs_i["sigma"] * sqrt(pred_dd$Age)
+  lp <- fit_func(dat = pred_dat, coefs = coefs_i, dd = mean_s_dd)
+  pred_matrix[, i] <- rnorm(n = length(lp), mean = lp, sd = st_dev)
+}
+pred_dd[, Mean := rowMeans(pred_matrix)] # save
+pred_dd
+
+# max
+pred_matrix <- matrix(NA, nrow = nrow(pred_dat), ncol = n_sims)
+for (i in 1:n_sims) {
+  coefs_i <- as.numeric(jags_fit_samples[i, ])
+  names(coefs_i) <- colnames(jags_fit_samples)
+  st_dev <- coefs_i["sigma"] * sqrt(pred_dd$Age)
+  lp <- fit_func(dat = pred_dat, coefs = coefs_i, dd = max_s_dd)
+  pred_matrix[, i] <- rnorm(n = length(lp), mean = lp, sd = st_dev)
+}
+pred_dd[, Max := rowMeans(pred_matrix)] # save
+pred_dd
+
+# melt
+pred_dd <- melt(pred_dd, id.vars = c("Sex", "Age"),
+                measure.vars = c("Min", "Mean", "Max"),
+                variable = "scaled_dd", value = "length_cm")
+pred_dd
+
+# add values
+pred_dd[scaled_dd == "Min", dd_val := min_s_dd]
+pred_dd[scaled_dd == "Mean", dd_val := mean_s_dd]
+pred_dd[scaled_dd == "Max", dd_val := max_s_dd]
+
+# plot
+pred_dd_plot <- ggplot(data = pred_dd, aes(x = Age, y = length_cm, col = dd_val, group = scaled_dd)) +
+  geom_line() +
+  xlab("Age (months)") +
+  ylab("Length (cm)") +
+  scale_color_viridis_c(option = "inferno",
+                        name = "Scaled \ndegree months",
+                        end = 0.9) +
+  facet_wrap(.~ Sex, labeller = as_labeller(Sex),
+             ncol = 1) +
+  theme_bw()
+pred_dd_plot
+
+png(here::here("outputs", "plots", "M3a-var",
+               "pred-dd.png"),
+    width = 6, height = 6, units = "in", res = 250)
+pred_dd_plot
 dev.off()
 
 # residuals vs fitted ----------------------------------------------------------
