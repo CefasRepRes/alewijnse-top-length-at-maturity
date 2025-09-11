@@ -21,6 +21,9 @@
 # Ignore config files
 /configs/
 
+# Ignore working
+/working/
+
 # Ignore non-coding files
 *.xlsx
 *.jpeg
