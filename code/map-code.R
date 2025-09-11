@@ -8,31 +8,30 @@ library(sf)
 library(here)
 library(CCAMLRGIS)
 library(cowplot)
+library(plyr)
 
 # load data
 dat <- data.table::fread(here::here("data", "age_dat_w_dd_base_0_subset.csv"))
 
 # aggregate by lat long
 # round
-dat[, latitude_set_start := round(latitude_set_start, 2)]
-dat[, longitude_set_start := round(longitude_set_start, 2)]
+dat[, latitude_set_start := plyr::round_any(latitude_set_start, 0.2)]
+dat[, longitude_set_start := plyr::round_any(longitude_set_start, 0.2)]
 
 # aggregate
 dat_agg <- dat[, .N, by = c("latitude_set_start", "longitude_set_start")]
 
 # load maps
-bathy <- read_sf("V:/FCOSO/Working_Area/1. Research Projects/Bycatch/5-day Bycatch_monitoring/GIS/shapefiles/48_bathy_line.shp")
-unique(bathy$CONTOUR)
-bathy <- dplyr::filter(bathy, CONTOUR %in% c(-100,
-                                             -200,
-                                             -400,
-                                             -2700))
-sg <- read_sf("V:/FCOSO/Working_Area/3. GIS_open/shapefiles/south_georgia.shp")
+coast <- load_Coastline()
+coast_trans <- st_transform(coast, 4326)
+coast <- dplyr::filter(coast, srcvrsn == "Ant. coastline V7.8 and Sub-Ant. coastline V7.3")
+asds <- load_ASDs()
+asd_483 <- dplyr::filter(asds, GAR_Short_Label == "483")
+
 
 # plot base map
 map <- ggplot() +
-  geom_sf(data = sg, fill = 'grey20', col = "grey60") +
-  geom_sf(data = bathy, col = "grey75", fill = NA, linewidth = 0.2) +
+  geom_sf(data = coast_trans) +
   geom_point(data = dat_agg, aes(y = latitude_set_start,
                                    x = longitude_set_start,
                                    size = N),
@@ -41,15 +40,10 @@ map <- ggplot() +
   xlab("") +
   ylab("") +
   theme_bw() +
-  guides(size = guide_legend(title = "N"))
+  # guides(size = guide_legend(title = "N"))
+  labs(x = "Longitude", y = "Latitude", size = "Number of\nindividuals")
 
 map
-
-# load maps
-coast <- load_Coastline()
-coast <- dplyr::filter(coast, srcvrsn == "Ant. coastline V7.8 and Sub-Ant. coastline V7.3")
-asds <- load_ASDs()
-asd_483 <- dplyr::filter(asds, GAR_Short_Label == "483")
 
 # plot inset map
 inset <- ggplot() +
@@ -65,8 +59,8 @@ inset
 # plot full map
 full_map <- ggdraw() +
   draw_plot(map) +
-  draw_plot(inset, height = 0.3, width = 0.3,
-            x = 0.05, y = 0.24)
+  draw_plot(inset, height = 0.295, width = 0.295,
+            x = 0.05, y = 0.255)
 #full_map
 
 # save
