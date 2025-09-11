@@ -1,0 +1,34 @@
+# Estimating Patagonian toothfish (*Dissostichus eleginoides*) length at first maturity from their age, sex, and temperature experience
+
+Author(s): [Sarah Alewijnse](https://github.com/sarah-alewijnse), [Stephen Gregory](https://github.com/stephendavidgregory)
+
+Contact: sarah.alewijnse@cefas.gov.uk
+
+This repository contains code used in this paper (link TBC).
+
+To cite the paper:
+
+> Marsh, J. E., Alewijnse, S. R., Gregory, S. D., Hollyman, P. R. and Söffker, M. Estimating Patagonian toothfish (*Dissostichus eleginoides*) length at first maturity from their age, sex, and temperature experience. TBC
+
+## Data
+
+Data from Copernicus Marine Environment Monitoring Service (CMEMS) can be downloaded [here](https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030/download?dataset=cmems_mod_glo_phy_my_0.083deg_P1M-m_202311). 
+You will need to select the monthly dataset for data from 1993 - 2021, and the interim monthly dataset for data from 2021 onwards.
+The variable to seelct is `Sea water potential temperature at seafloor bottomT[°C]`
+
+Ageing data are available on request from the [UK Polar Data Centre](https://www.bas.ac.uk/data/uk-pdc/).
+
+You will need to add these to a folder called **data** and create a config file pointing to the data files.
+
+## Code
+
+All code used in this projects is contained within the `code` folder:
+
+* **01-data-wrangling** - code for combining the CMEMS bottom temperature data with the toothfish data, subsetting data, and producing summaries.
+* **02-simulation-code** - code for running model simulations, in QMD format.
+* **03-model-code** - code for running each model, including producing diagnostic and predictive plots.
+* **04-plot-code** - additional plot code not contained within 03-model-code. Includes Figure 1a and the supplementary plot of degree months over time.
+
+## Models
+
+Contains the JAGS code for each of the candiate models.
