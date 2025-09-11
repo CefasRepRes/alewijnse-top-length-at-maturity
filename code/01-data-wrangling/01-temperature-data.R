@@ -7,33 +7,36 @@ library(here)
 library(data.table)
 library(ggplot2)
 
-# Load data --------------------------------------------------------------------
+# load config
+config <- yaml::yaml.load_file(here::here("configs", "config.yml"))
 
-# load data
-source("C:/Users/sa20/OneDrive - CEFAS/Projects/southern_ocean/r-projects/master-data-wrangling/code/data-prep-483-TOP-age.R")
+# Load data -----
 
-## 2021 + data =================================================================
+# load age data
+source(config$age_dat)
+
+## 2021 + data =====
 
 # load
-dat_1 <- terra::rast(here::here("data", "cmems_mod_glo_phy_myint_0.083deg_P1M-m_1755161088214.nc"))
+dat_1 <- terra::rast(here::here("data", config$CMEMS_2021))
 print(dat_1)
 
 # extract
 dat_1_res <- dat_1
-terra::res(dat_1_res) <- c(0.2, 0.2)
-dat_1_res <- terra::resample(dat_1, dat_1_res)
+terra::res(dat_1_res) <- c(0.2, 0.2) # set resolution to 0.2 deg
+dat_1_res <- terra::resample(dat_1, dat_1_res) # resample
 dat_1_temps <- as.data.table(terra::extract(dat_1_res,
-                                            TOP_all_age_effort_dat[, .(longitude_set_start, latitude_set_start)]))
-colnames(dat_1_temps) <- c('id', as.character(terra::time(dat_1_res)))
+                                            TOP_all_age_effort_dat[, .(longitude_set_start, latitude_set_start)])) # extract temp from lat and long
+colnames(dat_1_temps) <- c('id', as.character(terra::time(dat_1_res))) # set ID
 dat_1_temps <- melt(dat_1_temps,
                     id.vars = "id",
                     variable.name = "date",
-                    value.name = "bottom_temp")
+                    value.name = "bottom_temp") # melt into long form
 
-## 1993 - 2021 data ============================================================
+## 1993 - 2021 data =====
 
 # load
-dat_2 <- terra::rast(here::here("data", "cmems_mod_glo_phy_my_0.083deg_P1M-m_1755161051045.nc"))
+dat_2 <- terra::rast(here::here("data", config$CMEMS_1993))
 print(dat_2)
 
 # extract
@@ -48,7 +51,7 @@ dat_2_temps <- melt(dat_2_temps,
                     variable.name = "date",
                     value.name = "bottom_temp")
 
-## combine =====================================================================
+## combine =====
 
 # combine
 loc_temps <- rbind(dat_1_temps, dat_2_temps)
@@ -61,16 +64,17 @@ loc_temps$Date <- as.character(loc_temps$date)
 loc_temps$Date <- as.Date(lubridate::fast_strptime(loc_temps$Date, "%Y-%m-%d"))
 str(loc_temps)
 
+# quick plot
 ggplot(loc_temps[seq(1, nrow(loc_temps), 100)], aes(x = date, y = bottom_temp)) +
   geom_point(alpha = 0.2)
-
-# Match tag data and bottom temp -----------------------------------------------
 
 # check age spread
 ggplot(TOP_all_age_effort_dat, aes(x = Age)) +
   geom_histogram()
 min(TOP_all_age_effort_dat$Age)
 max(TOP_all_age_effort_dat$Age)
+
+# Match toothfish data and bottom temp -----
 
 # get location ID
 TOP_all_age_effort_dat <- TOP_all_age_effort_dat[, id := 1:.N]
@@ -98,7 +102,7 @@ TOP_all_age_effort_dat <- TOP_all_age_effort_dat[birth_date >= as.Date("1993-01-
 TOP_all_age_effort_dat[, age_months := lubridate::interval(birth_date_july,
                                                            catch_date) %/% months(1)]
 
-# save coordinates
+# save coordinates for later reference
 coords <- unique(TOP_all_age_effort_dat[, .(latitude_set_start,
                                             longitude_set_start,
                                             Year)])
@@ -108,46 +112,46 @@ data.table::fwrite(coords, here::here("data",
 # set base temp
 base_temp <- 0
 
-# loop to calculate degree days
-TOP_all_age_effort_dat[, dd := double()]
-TOP_all_age_effort_dat[, dd_avg := double()]
+# loop to calculate degree months
+TOP_all_age_effort_dat[, dm := double()]
+TOP_all_age_effort_dat[, dm_avg := double()]
 for(i in 1:nrow(TOP_all_age_effort_dat)){
   dat <- TOP_all_age_effort_dat[i, ]
   temps <- loc_temps[id == dat$id]
   temps <- temps[Date >= dat$birth_date &
                    Date <= dat$catch_date]
   temps <- temps[bottom_temp >= base_temp]
-  TOP_all_age_effort_dat[i, dd := sum(temps$bottom_temp - base_temp)]
-  TOP_all_age_effort_dat[i, dd_avg := mean(temps$bottom_temp - base_temp)]
+  TOP_all_age_effort_dat[i, dm := sum(temps$bottom_temp - base_temp)]
+  TOP_all_age_effort_dat[i, dm_avg := mean(temps$bottom_temp - base_temp)]
   print(i)
 };beep() # beep when done
 
-# calculate scaled dd
-TOP_all_age_effort_dat[, dd_scaled := dd - age_months]
+# calculate dm anomaly
+TOP_all_age_effort_dat[, dm_scaled := dm - age_months]
 
 # write out data with av_temp
 data.table::fwrite(TOP_all_age_effort_dat, here::here("data",
-                                                      paste0("age_dat_w_dd_base_", base_temp, ".csv")))
+                                                      paste0("age_dat_w_dm_base_", base_temp, ".csv")))
 
-# plot -------------------------------------------------------------------------
+# plots for checking -----
 
 library(ggplot2)
-ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = dd, y = Length, col = Sex)) +
+ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = dm, y = Length, col = Sex)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
   theme_bw()
 
-ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = dd_scaled, y = Length, col = Sex)) +
+ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = dm_scaled, y = Length, col = Sex)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
   theme_bw()
 
-ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = Age, y = dd, col = Sex)) +
+ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = Age, y = dm, col = Sex)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
   theme_bw()
 
-ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = Age, y = dd_scaled, col = Sex)) +
+ggplot(TOP_all_age_effort_dat[!is.na(Sex)], aes(x = Age, y = dm_scaled, col = Sex)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
   theme_bw()

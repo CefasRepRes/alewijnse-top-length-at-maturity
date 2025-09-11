@@ -8,29 +8,29 @@ library(magrittr)
 library(R2jags)
 
 # load data
-dd_dat <- data.table::fread(here::here("data", 'age_dat_w_dd_base_0_subset.csv'))
+dm_dat <- data.table::fread(here::here("data", 'age_dat_w_dm_base_0_subset.csv'))
 
 # fit with JAGS ----------------------------------------------------------------
 
 # recode sex
-dd_dat[, Sex := ifelse(Sex == "Female", 1, 2)]
+dm_dat[, Sex := ifelse(Sex == "Female", 1, 2)]
 
 # list params
-params <- c("intercept", "beta_dd", "beta_sex",
+params <- c("intercept", "beta_dm", "beta_sex",
             "beta_age", "sigma")
-pars <- c("intercept", "beta_dd", "beta_sex[1]", "beta_sex[2]",
+pars <- c("intercept", "beta_dm", "beta_sex[1]", "beta_sex[2]",
           "beta_age", "sigma")
 
-mod_dat <- with(dd_dat, list(age = age_months,
+mod_dat <- with(dm_dat, list(age = age_months,
                              length = Length,
-                             dd = dd_scaled,
+                             dm = dm_scaled,
                              sex = Sex,
-                             n = nrow(dd_dat)))
+                             n = nrow(dm_dat)))
 str(mod_dat)
 
 # run model
 # jags_fit <- R2jags::jags.parallel(model.file = here::here("models",
-#                                                           "M2-var.jags"),
+#                                                           "M2.jags"),
 #                                   parameters.to.save = c(params, "loglik"),
 #                                   data = mod_dat,
 #                                   n.chains = 3,
@@ -39,8 +39,8 @@ str(mod_dat)
 #                                   jags.seed = 1408,
 #                                   n.thin = 100);beepr::beep()
 #
-# saveRDS(jags_fit, here::here("outputs", "fits", "M2-jags-var.Rds"))
-jags_fit <- readRDS(here::here("outputs", "fits", "M2-jags-var.Rds"))
+# saveRDS(jags_fit, here::here("outputs", "fits", "M2-jags.Rds"))
+jags_fit <- readRDS(here::here("outputs", "fits", "M2-jags.Rds"))
 
 # check output
 print(jags_fit)
@@ -51,7 +51,7 @@ jags_fit_samples <- coda::as.mcmc(jags_fit)
 # traceplot
 traceplot <- bayesplot::mcmc_trace(jags_fit_samples, pars = pars)
 traceplot
-png(here::here("outputs", "plots", "M2-var",
+png(here::here("outputs", "plots", "M2",
                "traceplot.png"),
     width = 8, height = 8, units = "in", res = 250)
 traceplot
@@ -60,7 +60,7 @@ dev.off()
 # density
 density <- bayesplot::mcmc_dens_overlay(jags_fit_samples, pars = pars)
 density
-png(here::here("outputs", "plots", "M2-var",
+png(here::here("outputs", "plots", "M2",
                "density.png"),
     width = 8, height = 6, units = "in", res = 250)
 density
@@ -69,7 +69,7 @@ dev.off()
 # acf
 acf <- bayesplot::mcmc_acf_bar(jags_fit_samples, pars = pars)
 acf
-png(here::here("outputs", "plots", "M2-var",
+png(here::here("outputs", "plots", "M2",
                "acf.png"),
     width = 8, height = 6, units = "in", res = 250)
 acf
@@ -78,7 +78,7 @@ dev.off()
 # pairs
 pairs <- bayesplot::mcmc_pairs(jags_fit_samples, pars = pars)
 pairs
-png(here::here("outputs", "plots", "M2-var",
+png(here::here("outputs", "plots", "M2",
                "pairs.png"),
     width = 8, height = 6, units = "in", res = 250)
 pairs
@@ -103,14 +103,14 @@ coefs <- jags_fit_summary$statistics %>% as.data.frame()
 jags_fit_samples <- as.matrix(jags_fit_samples)
 
 fit_func <- function(dat, coefs){
-  coefs["intercept"] + coefs[paste0("beta_sex[", dat$Sex, "]")] + dat$dd * coefs["beta_dd"] + dat$Age * coefs["beta_age"]
+  coefs["intercept"] + coefs[paste0("beta_sex[", dat$Sex, "]")] + dat$dm * coefs["beta_dm"] + dat$Age * coefs["beta_age"]
 }
 
 # data for prediction
 n <- 1000
-pred_dat <- data.frame(dd = seq(from = min(dd_dat$dd_scaled), to = max(dd_dat$dd_scaled), l = n),
+pred_dat <- data.frame(dm = seq(from = min(dm_dat$dm_scaled), to = max(dm_dat$dm_scaled), l = n),
                        Sex = rep(c(1, 2), n / 2),
-                       Age = seq(from = min(dd_dat$age_months), to = max(dd_dat$age_months), l = n)) %>%
+                       Age = seq(from = min(dm_dat$age_months), to = max(dm_dat$age_months), l = n)) %>%
   data.table()
 
 # predict using entire posterior
@@ -152,13 +152,14 @@ deltas <- data.frame(Sex = c("1", "2"),
                      delta_low = c(coefs_low["delta[1]"],
                                    coefs_low["delta[2]"]))
 
+# plot
 pred_plot <- ggplot() +
-  geom_point(data = dd_dat, aes(x = age_months, y = Length, col = dd_scaled), pch = 1) +
+  geom_point(data = dm_dat, aes(x = age_months, y = Length, col = dm_scaled), pch = 1) +
   geom_line(data = pred_dat, aes(x = Age, y = pred_mean, group = Sex)) +
   geom_ribbon(data = pred_dat, aes(x = Age, ymin = pred_lower, ymax = pred_upper),
               alpha = 0.2) +
   scale_color_viridis_c(option = "inferno",
-                        name = "Scaled \ndegree days") +
+                        name = "Degree month \nanomalies") +
   xlab("Age (months)") +
   ylab("Length (cm)") +
   facet_wrap(.~ Sex) +
@@ -167,7 +168,7 @@ pred_plot <- ggplot() +
   theme_bw()
 pred_plot
 
-png(here::here("outputs", "plots", "M2-var",
+png(here::here("outputs", "plots", "M2",
                "pred.png"),
     width = 6, height = 6, units = "in", res = 250)
 pred_plot
@@ -177,24 +178,26 @@ dev.off()
 
 # modify fit function
 fit_func <- function(dat, coefs){
-  coefs["intercept"] + coefs[paste0("beta_sex[", dat$Sex, "]")] + dat$dd_scaled * coefs["beta_dd"] + dat$age_months * coefs["beta_age"]
+  coefs["intercept"] + coefs[paste0("beta_sex[", dat$Sex, "]")] + dat$dm_scaled * coefs["beta_dm"] + dat$age_months * coefs["beta_age"]
 }
 
 # get fitted values
-dd_dat[, fit_vals := fit_func(dat = dd_dat, coefs = coefs_mean)]
+dm_dat[, fit_vals := fit_func(dat = dm_dat, coefs = coefs_mean)]
 
 # get residuals
-dd_dat[, resid_vals := Length - fit_vals]
+dm_dat[, resid_vals := Length - fit_vals]
 
 # standardise residuals
-dd_dat[, stan_res := resid_vals / (coefs_i["sigma"] * sqrt(age_months))]
+dm_dat[, stan_res := resid_vals / (coefs_i["sigma"] * sqrt(age_months))]
 
-ggplot(data = dd_dat, aes(x = fit_vals, y = resid_vals)) +
+# plot residuals
+ggplot(data = dm_dat, aes(x = fit_vals, y = resid_vals)) +
   geom_point(alpha = 0.2) +
   geom_smooth(method = "loess") +
   theme_bw()
 
-ggplot(data = dd_dat, aes(x = fit_vals, y = stan_res)) +
+# plot standardised residuals
+ggplot(data = dm_dat, aes(x = fit_vals, y = stan_res)) +
   geom_point(alpha = 0.2) +
   geom_smooth(method = "loess") +
   theme_bw()

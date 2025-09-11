@@ -7,7 +7,7 @@ library(ggplot2)
 library(here)
 
 # load data
-dat <- data.table::fread(here::here("data", "age_dat_w_dd_base_0_subset.csv"))
+dat <- data.table::fread(here::here("data", "age_dat_w_dm_base_0_subset.csv"))
 str(dat)
 
 dat[, yr := lubridate::year(catch_date)]

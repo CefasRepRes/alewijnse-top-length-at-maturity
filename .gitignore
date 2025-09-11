@@ -18,6 +18,9 @@
 /models/archive/
 /code/archive/
 
+# Ignore config files
+/configs/
+
 # Ignore non-coding files
 *.xlsx
 *.jpeg

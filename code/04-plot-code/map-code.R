@@ -11,7 +11,7 @@ library(cowplot)
 library(plyr)
 
 # load data
-dat <- data.table::fread(here::here("data", "age_dat_w_dd_base_0_subset.csv"))
+dat <- data.table::fread(here::here("data", "age_dat_w_dm_base_0_subset.csv"))
 
 # aggregate by lat long
 # round
