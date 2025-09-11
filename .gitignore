@@ -37,3 +37,9 @@
 *.RData
 
 
+working/top_maturity.bak/cmems_mod_glo_phy_my_0.083deg_P1M-m_1755165037789.nc
+working/top_maturity.bak/working/results-nov-2023/top-maturity-modelfit-grubbs_2yr_data.RData
+working/top_maturity.bak/working/results-nov-2023/top-maturity-modelfit-grubbs_3yr_data.RData
+working/top_maturity.bak/working/results-nov-2023/top-maturity-modelfit-iqr_2yr_data.RData
+working/top_maturity.bak/working/results-nov-2023/top-maturity-modelfit-iqr_3yr_data.RData
+working/top_maturity.bak/working/top-maturity-modelfit.RData
