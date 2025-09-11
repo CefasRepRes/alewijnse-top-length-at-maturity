@@ -29,5 +29,6 @@
 *.nc
 *.qmd
 *.png
+*.RData
 
 
