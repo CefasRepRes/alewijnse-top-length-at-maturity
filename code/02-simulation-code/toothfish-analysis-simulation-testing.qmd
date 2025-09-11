@@ -76,84 +76,84 @@ sim_exp_len_f(data = d, lp_formula = lp_f, lp_coefs = lp_c)
 
 ```
 
-### Example 2: dd with breakpoint only
+### Example 2: dm with breakpoint only
 
 ```{r}
 #| label: sim-fun-eg2
 
-# example 2: dd with breakpoint only
-lp_f <- ~ 0 + I(dd1 - delta) +  I(sqrt((dd2 - delta)^2 + gamma))
-lp_c <- c("dd1" = 2.5, 
-          "dd2" = -1.7)
+# example 2: dm with breakpoint only
+lp_f <- ~ 0 + I(dm1 - delta) +  I(sqrt((dm2 - delta)^2 + gamma))
+lp_c <- c("dm1" = 2.5, 
+          "dm2" = -1.7)
 lp_p <- list("delta" = 15,
              "gamma" = 0.3)
-d <- data.frame("dd1" = c(50, 50), 
-                "dd2" = c(25, 25))
+d <- data.frame("dm1" = c(50, 50), 
+                "dm2" = c(25, 25))
 sim_exp_len_f(data = d, lp_formula = lp_f, lp_coefs = lp_c, lp_parms = lp_p)
 
 ```
 
-### Example 3: sex, age & dd with breakpoint
+### Example 3: sex, age & dm with breakpoint
 
 ```{r}
 #| label: sim-fun-eg3
 
-# example 3: intercept, age, sex & dd with breakpoint
-lp_f <- ~ 1 + sex + age + I(dd1 - delta) + I(sqrt((dd2 - delta)^2 + gamma))
+# example 3: intercept, age, sex & dm with breakpoint
+lp_f <- ~ 1 + sex + age + I(dm1 - delta) + I(sqrt((dm2 - delta)^2 + gamma))
 lp_c <- c("intercept" = 50,
           "sex" = 20,
           "age" = 2,
-          "dd1" = 2.5, 
-          "dd2" = -1.7)
+          "dm1" = 2.5, 
+          "dm2" = -1.7)
 lp_p <- list("delta" = 15,
              "gamma" = 0.3)
 d <- data.frame("intercept" = 1,
                 "sex" = factor(c(1, 2)),
                 "age" = c(20, 20), 
-                "dd1" = c(50, 50),
-                "dd2" = c(25, 25))
+                "dm1" = c(50, 50),
+                "dm2" = c(25, 25))
 sim_exp_len_f(data = d, lp_formula = lp_f, lp_coefs = lp_c, lp_parms = lp_p)
 
 ```
 
-### Example 4: intercept, age, sex & dd with sex-specific breakpoints
+### Example 4: intercept, age, sex & dm with sex-specific breakpoints
 
 ```{r}
 #| label: sim-fun-eg4
 
-# example 4: intercept, age, sex & dd with sex-specific breakpoints
-lp_f <- ~ 1 + sex + age + I(dd1 - delta[sex]) + I(sqrt((dd2 - delta[sex])^2 + gamma))
+# example 4: intercept, age, sex & dm with sex-specific breakpoints
+lp_f <- ~ 1 + sex + age + I(dm1 - delta[sex]) + I(sqrt((dm2 - delta[sex])^2 + gamma))
 lp_c <- c("intercept" = 50,
           "sex" = 20,
           "age" = 2,
-          "dd1" = 2.5, 
-          "dd2" = -1.7)
+          "dm1" = 2.5, 
+          "dm2" = -1.7)
 lp_p <- list("delta" = c(10, 20),
              "gamma" = 0.3)
 d <- data.frame("intercept" = 1, 
                 "sex" = factor(c(1, 2)),
                 "age" = c(20, 20),
-                "dd1" = c(50, 50),
-                "dd2" = c(25, 25))
+                "dm1" = c(50, 50),
+                "dm2" = c(25, 25))
 sim_exp_len_f(data = d, lp_formula = lp_f, lp_coefs = lp_c, lp_parms = lp_p)
 
 ```
 
-### Example 5: intercept, age, sex & dd
+### Example 5: intercept, age, sex & dm
 
 ```{r}
 #| label: sim-fun-eg5
 
-# example 5: intercept, age, sex & dd
-lp_f <- ~ 1 + sex + age + dd
+# example 5: intercept, age, sex & dm
+lp_f <- ~ 1 + sex + age + dm
 lp_c <- c("intercept" = 50,
           "age" = 2,
           "sex" = 20,
-          "dd" = 2.5)
+          "dm" = 2.5)
 d <- data.frame("intercept" = 1,
                 "sex" = factor(c(1, 2)),
                 "age" = c(20, 20),
-                "dd" = c(50, 50))
+                "dm" = c(50, 50))
 sim_exp_len_f(data = d, lp_formula = lp_f, lp_coefs = lp_c)
 
 ```
@@ -241,7 +241,7 @@ lh_temps <- temp_dt[lh_dates, on = .(date > birth, date < capture)]
 dm <- lh_temps[which(temperature > 0), mean(temperature), 
                by = .(id, year, month)][, sum(V1), by = id]$V1
 
-# pull them together; note name of age & dd data
+# pull them together; note name of age & dm data
 d <- data.table(intercept = 1, 
                 "sex" = factor(sex), 
                 "age" = age,  
@@ -289,7 +289,7 @@ print(temp_dm_p)
 ```
 
 
-## Model M0-var
+## Model M0
 
 ```r 
 {{< include ../../models/M0.jags >}}
@@ -373,10 +373,10 @@ m0_ests[idx, "Actual"] <- m0_coefs
 ```
 
 
-## Model M1-var
+## Model M1
 
 ```r 
-{{< include ../models/M1-var.jags >}}
+{{< include ../../models/M1.jags >}}
 ```
 
 ### Simulate response variable
@@ -444,7 +444,7 @@ m1_fit <- jags.fit(data = list("n" = nrow(d),
                               "beta_age1", "beta_age2", 
                               "delta", "gamma", 
                               "sigma", "tau"),
-                   model = "../models/M1-var.jags",
+                   model = "../../models/M1.jags",
                    n.chains = mc$n.chains, 
                    n.adapt = mc$n.adapt, 
                    n.update = mc$n.update, 
@@ -471,10 +471,10 @@ m1_ests[idx, "Actual"] <- unlist(m1_parms)
 ```
 
 
-## Model M2-var
+## Model M2
 
 ```r 
-{{< include ../models/M2-var.jags >}}
+{{< include ../../models/M2.jags >}}
 ```
 
 ### Simulate response variable
@@ -531,11 +531,11 @@ m2_fit <- jags.fit(data = list("n" = nrow(d),
                                "length" = lengths, 
                                "sex" = d[, sex], 
                                "age" = d[, age1],
-                               "dd" = d[, dma1]),
+                               "dm" = d[, dma1]),
                    params = c("intercept", "beta_sex", 
-                              "beta_age", "beta_dd", 
+                              "beta_age", "beta_dm", 
                               "sigma", "tau"),
-                   model = "../models/M2-var.jags",
+                   model = "../../models/M2.jags",
                    n.chains = mc$n.chains, 
                    n.adapt = mc$n.adapt, 
                    n.update = mc$n.update, 
@@ -555,16 +555,16 @@ idx <- match(x = gsub(pattern = "1$|2$", replacement = "",
              table = gsub(pattern = "beta_|\\[2\\]", replacement = "",
                           x = m2_ests$Coefficient))
 m2_ests[idx, "Actual"] <- m2_coefs
-idx <- match(x = "beta_dd", table = m2_ests$Coefficient)
+idx <- match(x = "beta_dm", table = m2_ests$Coefficient)
 m2_ests[idx, "Actual"] <- m2_coefs["dma1"]
 
 ```
 
 
-## Model M3-var
+## Model M3
 
 ```r 
-{{< include ../models/M3a-var.jags >}}
+{{< include ../../models/M3.jags >}}
 ```
 
 ### Simulate response variable
@@ -627,15 +627,15 @@ m3_fit <- jags.fit(data = list("n" = nrow(d),
                                "length" = lengths, 
                                "sex" = d[, sex], 
                                "age" = d[, age1],
-                               "dd" = d[, dma1],
+                               "dm" = d[, dma1],
                                "min_age" = min(d$age1),
                                "max_age" = max(d$age1)),
                    params = c("intercept", "beta_sex", 
                               "beta_age1", "beta_age2",
-                              "beta_dd", 
+                              "beta_dm", 
                               "delta", "gamma", 
                               "sigma", "tau"),
-                   model = "../models/M3a-var.jags",
+                   model = "../../models/M3.jags",
                    n.chains = mc$n.chains, 
                    n.adapt = mc$n.adapt, 
                    n.update = mc$n.update, 
@@ -658,7 +658,7 @@ idx <- match(x = names(unlist(m3_parms)),
              table = gsub(pattern = "\\[([0-9])\\]", replacement = "\\1",
                           x = m3_ests$Coefficient))
 m3_ests[idx, "Actual"] <- unlist(m3_parms)
-idx <- match(x = "beta_dd", table = m3_ests$Coefficient)
+idx <- match(x = "beta_dm", table = m3_ests$Coefficient)
 m3_ests[idx, "Actual"] <- m3_coefs["dma1"]
 
 ```
@@ -727,6 +727,7 @@ coef_p <- ggplot(data = subset(x = ests_dt,
   geom_errorbar(width = 0.25) +
   geom_point(data = ests_dt, mapping = aes(y = Actual), colour = "red") +
   facet_grid(cols = vars(Model), rows = vars(Type), scales = "free") +
+  labs(x = "Model parameter", y = "Estimate / generating value") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 print(coef_p)
 
@@ -766,5 +767,13 @@ print(pairs_p)
 
 # save
 save.image("toothfish-analysis-simulations.RData")
+
+```
+
+```{r}
+#| include: false
+
+# save figure 2
+
 
 ```
