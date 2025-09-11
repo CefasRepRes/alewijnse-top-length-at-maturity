@@ -55,7 +55,7 @@ traceplot <- bayesplot::mcmc_trace(jags_fit_samples, pars = pars)
 traceplot
 png(here::here("outputs", "plots", "M3a-var",
                "traceplot.png"),
-    width = 8, height = 8, units = "in", res = 250)
+    width = 10, height = 8, units = "in", res = 250)
 traceplot
 dev.off()
 
@@ -64,7 +64,7 @@ density <- bayesplot::mcmc_dens_overlay(jags_fit_samples, pars = pars)
 density
 png(here::here("outputs", "plots", "M3a-var",
                "density.png"),
-    width = 8, height = 6, units = "in", res = 250)
+    width = 10, height = 6, units = "in", res = 250)
 density
 dev.off()
 
@@ -73,7 +73,7 @@ acf <- bayesplot::mcmc_acf_bar(jags_fit_samples, pars = pars)
 acf
 png(here::here("outputs", "plots", "M3a-var",
                "acf.png"),
-    width = 8, height = 6, units = "in", res = 250)
+    width = 10, height = 6, units = "in", res = 250)
 acf
 dev.off()
 
@@ -169,7 +169,7 @@ pred_plot <- ggplot() +
   geom_vline(data = deltas, aes(xintercept = delta_low),
              linetype = "dotted") +
   scale_color_viridis_c(option = "inferno",
-                        name = "Scaled \ndegree months",
+                        name = "Degree month \nanomalies",
                         end = 0.9) +
   xlab("Age (months)") +
   ylab("Length (cm)") +
@@ -256,7 +256,7 @@ pred_dd_plot <- ggplot(data = pred_dd, aes(x = Age, y = length_cm, col = dd_val,
   xlab("Age (months)") +
   ylab("Length (cm)") +
   scale_color_viridis_c(option = "inferno",
-                        name = "Scaled \ndegree months",
+                        name = "Degree month \nanomalies",
                         end = 0.9) +
   facet_wrap(.~ Sex, labeller = as_labeller(Sex),
              ncol = 1) +

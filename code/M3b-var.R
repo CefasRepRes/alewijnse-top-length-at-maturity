@@ -171,7 +171,7 @@ pred_plot <- ggplot() +
   geom_vline(data = deltas, aes(xintercept = delta_low),
              linetype = "dotted") +
   scale_color_viridis_c(option = "inferno",
-                        name = "Scaled \ndegree days") +
+                        name = "Degree month \nanomalies") +
   xlab("Age (months)") +
   ylab("Length (cm)") +
   facet_wrap(.~ Sex) +
