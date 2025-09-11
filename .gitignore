@@ -30,7 +30,6 @@
 *.csl
 *.bib
 *.nc
-*.qmd
 *.png
 *.RData
 

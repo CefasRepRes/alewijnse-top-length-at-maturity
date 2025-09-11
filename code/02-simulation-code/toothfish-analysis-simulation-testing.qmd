@@ -1,0 +1,770 @@
+---
+title: "Toothfish analysis simulation testing"
+author: "Stephen D. Gregory"
+format: 
+  html:
+    self-contained: true
+    code-fold: show
+    toc: true
+lightbox: true 
+---
+
+## A simulation function
+
+```{r}
+#| label: sim-fun
+
+# simulate expected lengths function
+sim_exp_len_f <- function(data, 
+                          lp_formula, lp_coefs, lp_parms = NULL) {
+  
+  # get formula
+  f_ <- as.formula(object = lp_formula)
+  
+  # get lp coefficients
+  c_ <- sapply(X = names(lp_coefs),
+               FUN = function(v) {
+                 grepl(pattern = v,
+                       x = gsub(pattern = "^1 \\+",
+                                replacement = "intercept +",
+                                x = as.character(f_)[[2]]))
+               })
+  
+  # get data
+  d_ <- data.frame(data)[, names(which(c_))]
+  
+  # add delta to data
+  if (grepl("delta", as.character(f_)[[2]])) {
+    if (grepl("delta\\[", as.character(f_)[[2]])) {
+      d_$delta <- lp_parms$delta[data$sex]
+    } else {
+      d_$delta <- lp_parms$delta[1]
+    }
+  }
+  
+  # add gamma to data
+  if(grepl("gamma", as.character(f_)[[2]])) {
+    d_$gamma <- lp_parms$gamma
+  }
+  
+  # make the model matrix
+  mm <- model.matrix(object = f_, data = d_)
+  
+  # get the expectations
+  mm %*% lp_coefs[c_]
+  
+}
+
+```
+
+## Some examples
+
+### Example 1: intercept, sex & age
+
+```{r}
+#| label: sim-fun-eg1
+
+# example 1: intercept, age & sex
+lp_f <- ~ 1 + sex + age
+lp_c <- c("intercept" = 50,
+          "sex" = 20,
+          "age" = 2)
+d <- data.frame("intercept" = 1, 
+                "sex" = factor(c(1, 2)),
+                "age" = c(20, 20))
+sim_exp_len_f(data = d, lp_formula = lp_f, lp_coefs = lp_c)
+
+```
+
+### Example 2: dd with breakpoint only
+
+```{r}
+#| label: sim-fun-eg2
+
+# example 2: dd with breakpoint only
+lp_f <- ~ 0 + I(dd1 - delta) +  I(sqrt((dd2 - delta)^2 + gamma))
+lp_c <- c("dd1" = 2.5, 
+          "dd2" = -1.7)
+lp_p <- list("delta" = 15,
+             "gamma" = 0.3)
+d <- data.frame("dd1" = c(50, 50), 
+                "dd2" = c(25, 25))
+sim_exp_len_f(data = d, lp_formula = lp_f, lp_coefs = lp_c, lp_parms = lp_p)
+
+```
+
+### Example 3: sex, age & dd with breakpoint
+
+```{r}
+#| label: sim-fun-eg3
+
+# example 3: intercept, age, sex & dd with breakpoint
+lp_f <- ~ 1 + sex + age + I(dd1 - delta) + I(sqrt((dd2 - delta)^2 + gamma))
+lp_c <- c("intercept" = 50,
+          "sex" = 20,
+          "age" = 2,
+          "dd1" = 2.5, 
+          "dd2" = -1.7)
+lp_p <- list("delta" = 15,
+             "gamma" = 0.3)
+d <- data.frame("intercept" = 1,
+                "sex" = factor(c(1, 2)),
+                "age" = c(20, 20), 
+                "dd1" = c(50, 50),
+                "dd2" = c(25, 25))
+sim_exp_len_f(data = d, lp_formula = lp_f, lp_coefs = lp_c, lp_parms = lp_p)
+
+```
+
+### Example 4: intercept, age, sex & dd with sex-specific breakpoints
+
+```{r}
+#| label: sim-fun-eg4
+
+# example 4: intercept, age, sex & dd with sex-specific breakpoints
+lp_f <- ~ 1 + sex + age + I(dd1 - delta[sex]) + I(sqrt((dd2 - delta[sex])^2 + gamma))
+lp_c <- c("intercept" = 50,
+          "sex" = 20,
+          "age" = 2,
+          "dd1" = 2.5, 
+          "dd2" = -1.7)
+lp_p <- list("delta" = c(10, 20),
+             "gamma" = 0.3)
+d <- data.frame("intercept" = 1, 
+                "sex" = factor(c(1, 2)),
+                "age" = c(20, 20),
+                "dd1" = c(50, 50),
+                "dd2" = c(25, 25))
+sim_exp_len_f(data = d, lp_formula = lp_f, lp_coefs = lp_c, lp_parms = lp_p)
+
+```
+
+### Example 5: intercept, age, sex & dd
+
+```{r}
+#| label: sim-fun-eg5
+
+# example 5: intercept, age, sex & dd
+lp_f <- ~ 1 + sex + age + dd
+lp_c <- c("intercept" = 50,
+          "age" = 2,
+          "sex" = 20,
+          "dd" = 2.5)
+d <- data.frame("intercept" = 1,
+                "sex" = factor(c(1, 2)),
+                "age" = c(20, 20),
+                "dd" = c(50, 50))
+sim_exp_len_f(data = d, lp_formula = lp_f, lp_coefs = lp_c)
+
+```
+
+## Simulation set-up
+
+```{r}
+#| label: sim-setup
+#| message: false
+#| warning: false
+
+# libraries
+library(data.table)
+library(dclone)
+library(ggplot2)
+library(patchwork)
+library(gt)
+library(bayesplot)
+
+# MCMC numbers
+mc <- list(n.chains = 3, 
+           n.adapt = 1000, 
+           n.update = 2000, 
+           thin = 10, 
+           n.iter = 13000)
+
+```
+
+## Simulate explanatory variables
+
+```{r}
+#| label: simulate-explanatories
+
+# set seed
+set.seed(4)
+
+# constants
+n <- 3600
+z <- 1.5:30
+earliest_birth <- as.Date("1993-07-01")
+latest_capture <- as.Date("2024-02-21")
+yr_diff <- year(latest_capture) - year(earliest_birth)
+
+# temperature data, allowing for possible trend
+a <- 0.5
+p <- c("months" = 12) # c("days" = 365)
+temp <- a * cos(x = 2 * pi * (1:(p * yr_diff)) / p) + 
+  a * sin(x = 2 * pi * (1:(p * yr_diff)) / p) + 
+  rnorm(n = p * yr_diff,
+        mean = seq(from = 1.02, to = 1.02, length.out = 365 * yr_diff),
+        sd = 0.5)
+temp_dt <- data.table(
+  "date" = seq.Date(from = as.Date(paste0(year(earliest_birth), "-03-01")), 
+                    to = as.Date(paste0(year(latest_capture), "-02-28")), 
+                    by = names(p))[1:length(temp)],
+  "temperature" = temp)
+temp_dt[, "month" := month(date)]
+temp_dt[, "year" := year(date)]
+temp_p <- ggplot(data = temp_dt, mapping = aes(x = date, y = temperature)) +
+  geom_point() +
+  geom_line() +
+  geom_vline(xintercept = as.Date(x = paste0(year(earliest_birth):
+                                               (year(latest_capture) - 1),
+                                             "-03-01")),
+             linewidth = 0.5, colour = "grey") +
+  theme_classic()
+
+# explanatory variables: age & sex
+age <- sample(x = z, size = n, replace = TRUE, 
+              prob = plogis(0.02 * z)) * 365
+sex <- gl(n = 2, k = 1, length = n)
+
+# explanatory variables: degree months
+lh_dates <- data.table(
+  "id" = 1:n,
+  "age" = age,
+  "capture" = as.Date(sapply(X = 1:n,
+                             FUN = function(v) {
+                               sample(x = seq.Date(from = (earliest_birth + age[v]),
+                                                   to = latest_capture, 
+                                                   by = "days"), size = 1)}))
+)
+lh_dates[, "birth" := capture - age]
+lh_temps <- temp_dt[lh_dates, on = .(date > birth, date < capture)]
+dm <- lh_temps[which(temperature > 0), mean(temperature), 
+               by = .(id, year, month)][, sum(V1), by = id]$V1
+
+# pull them together; note name of age & dd data
+d <- data.table(intercept = 1, 
+                "sex" = factor(sex), 
+                "age" = age,  
+                "dm" = dm)
+
+# convert age to months
+d[, "age" := floor((age / 365) * 12)]
+
+# add replicate age column - needed for simulation
+d[, c("age1", "age2") := age]
+d[, "age" := NULL]
+
+# remove fish age > 30 years
+d <- subset(x = d, subset = age1 < (30 * 365) / 12)
+
+# show that age & dm are not independent
+temp_dm <- ggplot(data = d, mapping = aes(x = age1, y = dm)) +
+  geom_point() +
+  ggtitle(label = paste0("Pearson's correlation = ", 
+                         sprintf(with(data = d, expr = cor(age1, dm)), 
+                                 fmt = "%.3f"))) +
+  theme_classic()
+
+# make dm an anomaly
+d[, "dma" := (dm - age1)]
+
+# add replicate dma column - needed for simulation
+d[, c("dma1", "dma2") := dma]
+d[, "dma" := NULL]
+
+# show that age & dm are more independent
+temp_dma <- ggplot(data = d, mapping = aes(x = age1, y = dma1)) +
+  geom_point() +
+  ggtitle(label = paste0("Pearson's correlation = ", 
+                         sprintf(with(data = d, expr = cor(age1, dma1)), 
+                                 fmt = "%.3f"))) +
+  theme_classic()
+
+# combine plots
+temp_dm_p <- temp_p / (temp_dm + temp_dma)
+
+# plot
+print(temp_dm_p)
+
+```
+
+
+## Model M0-var
+
+```r 
+{{< include ../../models/M0.jags >}}
+```
+
+### Simulate response variable
+
+```{r}
+#| label: m0-simulate-response
+
+# linear predictor (lp) coefficients
+m0_coefs <- c("intercept" = 50,
+              "sex" = -10.0,
+              "age1" = 0.5)
+
+# model error
+sd <- 0.1
+
+# simulate expected lengths
+lp <- sim_exp_len_f(data = d,
+                    lp_formula = ~ 1 + sex + age1, 
+                    lp_coefs = m0_coefs)
+
+# simulate actual lengths
+lengths <- rnorm(n = nrow(d), mean = lp, sd = sd * d$age1)
+
+```
+
+### Plot
+
+```{r}
+#| label: m0-repsonse-plot
+
+# plot response variable
+m0_sim_p <- ggplot(data = cbind(d, lengths), 
+                   mapping = aes(y = lengths, x = age1, colour = `sex`)) +
+  geom_point() +
+  facet_wrap(~ sex) + 
+  labs(x = "Age (months)", y = "Length (cm)") +
+  theme(text = element_text(size = 16), strip.text = element_text(size = 10),
+        legend.position = "none")
+print(m0_sim_p)
+
+```
+
+### Fit
+
+```{r}
+#| label: m0-fit
+#| message: false
+#| warning: false
+#| results: hide
+
+# fit
+m0_fit <- jags.fit(data = list("n" = nrow(d), 
+                               "length" = lengths, 
+                               "sex" = d[, sex], 
+                               "age" = d[, age1]),
+                   params = c("intercept", "beta_sex", "beta_age", "sigma", "tau"),
+                   model = "../../models/M0.jags",
+                   n.chains = mc$n.chains, 
+                   n.adapt = mc$n.adapt, 
+                   n.update = mc$n.update, 
+                   thin = mc$thin, 
+                   n.iter = mc$n.iter)
+
+# get the estimates
+m0_ests <- with(summary(m0_fit), 
+                as.data.table(cbind(statistics[, 1, drop = FALSE], 
+                                    quantiles[, c("2.5%", "97.5%")]), 
+                              keep.rownames = "Coefficient")
+)
+
+# add actual
+idx <- match(x = gsub(pattern = "1$|2$", replacement = "", 
+                      x = names(m0_coefs)),
+             table = gsub(pattern = "beta_|\\[2\\]", replacement = "",
+                          x = m0_ests$Coefficient))
+m0_ests[idx, "Actual"] <- m0_coefs
+
+```
+
+
+## Model M1-var
+
+```r 
+{{< include ../models/M1-var.jags >}}
+```
+
+### Simulate response variable
+
+```{r}
+#| label: m1-simulate-response
+
+# linear predictor (lp) coefficients
+m1_coefs <- c("intercept" = 100,
+              "sex" = -10.0,
+              "age1" = 0.5,
+              "age2" = -0.2)
+
+# lp parameters
+m1_parms <- list("delta" = c(115, 100),
+                 "gamma" = 25)
+
+# model error
+sd <- 0.1
+
+# simulate expected lengths
+lp <- sim_exp_len_f(data = d,
+                    lp_formula = ~ 1 + sex + I(age1 - delta[sex]) + I(sqrt((age2 - delta[sex])^2 + gamma)), 
+                    lp_coefs = m1_coefs,
+                    lp_parms = m1_parms)
+
+# simulate actual lengths
+lengths <- rnorm(n = nrow(d), mean = lp, sd = sd * d$age1)
+
+```
+
+### Plot
+
+```{r}
+#| label: m1-repsonse-plot
+
+# plot response variable
+m1_sim_p <- ggplot(data = cbind(d, lengths), 
+                   mapping = aes(y = lengths, x = age1, colour = `sex`)) +
+  geom_point() +
+  facet_wrap(~ sex) + 
+  labs(x = "Age (months)", y = "Length (cm)") +
+  theme(text = element_text(size = 16), strip.text = element_text(size = 10),
+        legend.position = "none")
+print(m1_sim_p)
+
+```
+
+### Fit
+
+```{r}
+#| label: m1-fit
+#| message: false
+#| warning: false
+#| results: hide
+
+# fit
+m1_fit <- jags.fit(data = list("n" = nrow(d), 
+                               "length" = lengths, 
+                               "sex" = d[, sex], 
+                               "age" = d[, age1],
+                               "min_age" = min(d$age1),
+                               "max_age" = max(d$age1)),
+                   params = c("intercept", "beta_sex", 
+                              "beta_age1", "beta_age2", 
+                              "delta", "gamma", 
+                              "sigma", "tau"),
+                   model = "../models/M1-var.jags",
+                   n.chains = mc$n.chains, 
+                   n.adapt = mc$n.adapt, 
+                   n.update = mc$n.update, 
+                   thin = mc$thin, 
+                   n.iter = mc$n.iter)
+
+# get the estimates
+m1_ests <- with(summary(m1_fit), 
+                as.data.table(cbind(statistics[, 1, drop = FALSE], 
+                                    quantiles[, c("2.5%", "97.5%")]), 
+                              keep.rownames = "Coefficient")
+)
+
+# add actual
+idx <- match(x = names(m1_coefs),
+             table = gsub(pattern = "beta_|\\[2\\]", replacement = "",
+                          x = m1_ests$Coefficient))
+m1_ests[idx, "Actual"] <- m1_coefs
+idx <- match(x = names(unlist(m1_parms)),
+             table = gsub(pattern = "\\[([0-9])\\]", replacement = "\\1",
+                          x = m1_ests$Coefficient))
+m1_ests[idx, "Actual"] <- unlist(m1_parms)
+
+```
+
+
+## Model M2-var
+
+```r 
+{{< include ../models/M2-var.jags >}}
+```
+
+### Simulate response variable
+
+```{r}
+#| label: m2-simulate-response
+
+# linear predictor (lp) coefficients
+m2_coefs <- c("intercept" = 50,
+              "sex" = -10.0,
+              "age1" = 0.5,
+              "dma1" = -0.2)
+
+# model error
+sd <- 0.1
+
+# simulate expected lengths
+lp <- sim_exp_len_f(data = d,
+                    lp_formula = ~ 1 + sex + age1 + dma1, 
+                    lp_coefs = m2_coefs)
+
+# simulate actual lengths
+lengths <- rnorm(n = nrow(d), mean = lp, sd = sd * d$age1)
+
+```
+
+### Plot
+
+```{r}
+#| label: m2-repsonse-plot
+
+# plot response variable
+m2_sim_p <- ggplot(data = cbind(d, lengths), 
+                   mapping = aes(y = lengths, x = age1, colour = `sex`)) +
+  geom_point() +
+  facet_wrap(~ sex) + 
+  labs(x = "Age (months)", y = "Length (cm)") +
+  theme(text = element_text(size = 16), strip.text = element_text(size = 10),
+        legend.position = "none")
+print(m2_sim_p)
+
+```
+
+### Fit
+
+```{r}
+#| label: m2-fit
+#| message: false
+#| warning: false
+#| results: hide
+
+# fit
+m2_fit <- jags.fit(data = list("n" = nrow(d), 
+                               "length" = lengths, 
+                               "sex" = d[, sex], 
+                               "age" = d[, age1],
+                               "dd" = d[, dma1]),
+                   params = c("intercept", "beta_sex", 
+                              "beta_age", "beta_dd", 
+                              "sigma", "tau"),
+                   model = "../models/M2-var.jags",
+                   n.chains = mc$n.chains, 
+                   n.adapt = mc$n.adapt, 
+                   n.update = mc$n.update, 
+                   thin = mc$thin, 
+                   n.iter = mc$n.iter)
+
+# get the estimates
+m2_ests <- with(summary(m2_fit), 
+                as.data.table(cbind(statistics[, 1, drop = FALSE], 
+                                    quantiles[, c("2.5%", "97.5%")]), 
+                              keep.rownames = "Coefficient")
+)
+
+# add actual
+idx <- match(x = gsub(pattern = "1$|2$", replacement = "", 
+                      x = names(m2_coefs)),
+             table = gsub(pattern = "beta_|\\[2\\]", replacement = "",
+                          x = m2_ests$Coefficient))
+m2_ests[idx, "Actual"] <- m2_coefs
+idx <- match(x = "beta_dd", table = m2_ests$Coefficient)
+m2_ests[idx, "Actual"] <- m2_coefs["dma1"]
+
+```
+
+
+## Model M3-var
+
+```r 
+{{< include ../models/M3a-var.jags >}}
+```
+
+### Simulate response variable
+
+```{r}
+#| label: m3-simulate-response
+
+# linear predictor (lp) coefficients
+m3_coefs <- c("intercept" = 100,
+              "sex" = -10.0,
+              "age1" = 0.5,
+              "age2" = -0.2,
+              "dma1" = -0.2)
+
+# lp parameters
+m3_parms <- list("delta" = c(115, 100),
+                 "gamma" = 25)
+
+# model error
+sd <- 0.1
+
+# simulate expected lengths
+lp <- sim_exp_len_f(data = d,
+                    lp_formula = ~ 1 + sex + I(age1 - delta[sex]) + I(sqrt((age2 - delta[sex])^2 + gamma)) + dma1, 
+                    lp_coefs = m3_coefs,
+                    lp_parms = m3_parms)
+
+# simulate actual lengths
+lengths <- rnorm(n = nrow(d), mean = lp, sd = sd * d$age1)
+
+```
+
+### Plot
+
+```{r}
+#| label: m3-repsonse-plot
+
+# plot response variable
+m3_sim_p <- ggplot(data = cbind(d, lengths), 
+                   mapping = aes(y = lengths, x = age1, colour = `sex`)) +
+  geom_point() +
+  facet_wrap(~ sex) + 
+  labs(x = "Age (months)", y = "Length (cm)") +
+  theme(text = element_text(size = 16), strip.text = element_text(size = 10),
+        legend.position = "none")
+print(m3_sim_p)
+
+```
+
+### Fit
+
+```{r}
+#| label: m3-fit
+#| message: false
+#| warning: false
+#| results: hide
+
+# fit
+m3_fit <- jags.fit(data = list("n" = nrow(d), 
+                               "length" = lengths, 
+                               "sex" = d[, sex], 
+                               "age" = d[, age1],
+                               "dd" = d[, dma1],
+                               "min_age" = min(d$age1),
+                               "max_age" = max(d$age1)),
+                   params = c("intercept", "beta_sex", 
+                              "beta_age1", "beta_age2",
+                              "beta_dd", 
+                              "delta", "gamma", 
+                              "sigma", "tau"),
+                   model = "../models/M3a-var.jags",
+                   n.chains = mc$n.chains, 
+                   n.adapt = mc$n.adapt, 
+                   n.update = mc$n.update, 
+                   thin = mc$thin, 
+                   n.iter = mc$n.iter)
+
+# get the estimates
+m3_ests <- with(summary(m3_fit), 
+                as.data.table(cbind(statistics[, 1, drop = FALSE], 
+                                    quantiles[, c("2.5%", "97.5%")]), 
+                              keep.rownames = "Coefficient")
+)
+
+# add actual
+idx <- match(x = names(m3_coefs),
+             table = gsub(pattern = "beta_|\\[2\\]", replacement = "",
+                          x = m3_ests$Coefficient))
+m3_ests[idx, "Actual"] <- m3_coefs
+idx <- match(x = names(unlist(m3_parms)),
+             table = gsub(pattern = "\\[([0-9])\\]", replacement = "\\1",
+                          x = m3_ests$Coefficient))
+m3_ests[idx, "Actual"] <- unlist(m3_parms)
+idx <- match(x = "beta_dd", table = m3_ests$Coefficient)
+m3_ests[idx, "Actual"] <- m3_coefs["dma1"]
+
+```
+
+
+## Table of coefficients
+
+```{r}
+#| label: coef-tab
+#| results: asis
+
+# get model estimates
+ests_lst <- lapply(X = ls(pattern = "_ests"), 
+                   FUN = function(v) eval(as.name(v)))
+names(ests_lst) <- tools::toTitleCase(gsub(pattern = "_ests", 
+                                           replacement = "", 
+                                           x = ls(pattern = "_ests")))
+
+# make table
+ests_dt <- rbindlist(l = ests_lst, idcol = "Model")
+
+# make a gt
+ests_gt <- gt(data = ests_dt)
+
+# blank repeat model names to be cleaner
+ests_gt$`_data`[duplicated(ests_gt$`_data`$Model), "Model"] <- ""
+
+# make font size
+ests_gt <- tab_options(data = ests_gt, table.font.size = 12)
+
+# make first row bold
+lst <- lapply(colnames(ests_dt), function(v) md(paste0("**", v, "**")))
+names(lst) <- colnames(ests_dt)
+ests_gt <- cols_label(.data = ests_gt,
+                      .list = lst)
+
+# change numeric digits
+ests_gt <- fmt_number(data = ests_gt, decimals = 3)
+
+# print
+ests_gt
+
+```
+
+
+## Coefficient plots
+
+```{r}
+#| label: coef-plot
+#| fig-width: 8
+#| fig-height: 5
+#| message: false
+#| warning: false
+
+# make plotting nicer
+ests_dt[, "Type" := "betas"]
+ests_dt[grep(pattern = "delta\\[|delta_sex\\[", x = Coefficient), 
+        "Type" := "deltas"]
+
+# plot
+coef_p <- ggplot(data = subset(x = ests_dt, 
+                               subset = !Coefficient %in% c("sigma", "tau")),
+                 mapping = aes(x = Coefficient, y = Mean,
+                               ymin = `2.5%`, ymax = `97.5%`)) +
+  geom_point() +
+  geom_errorbar(width = 0.25) +
+  geom_point(data = ests_dt, mapping = aes(y = Actual), colour = "red") +
+  facet_grid(cols = vars(Model), rows = vars(Type), scales = "free") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+print(coef_p)
+
+```
+
+
+## Example diagnostics
+
+```{r}
+#| label: eg-traces
+#| fig-width: 8
+#| fig-height: 5
+#| message: false
+#| warning: false
+
+# trace plot
+trace_p <- mcmc_trace(m3_fit)
+print(trace_p)
+
+```
+
+```{r}
+#| label: eg-pairs
+#| fig-width: 12
+#| fig-height: 12
+#| message: false
+#| warning: false
+
+# pairs plot
+pairs_p <- mcmc_pairs(m3_fit)
+print(pairs_p)
+
+```
+
+```{r}
+#| include: false
+
+# save
+save.image("toothfish-analysis-simulations.RData")
+
+```

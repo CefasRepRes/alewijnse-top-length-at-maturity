@@ -1,0 +1,145 @@
+---
+title: "TOP temperatures"
+author: "Stephen D. Gregory"
+format:
+  html:
+    self-contained: true
+code-fold: show
+lightbox: true
+---
+
+```{r}
+#| label: data
+#| message: false
+
+# load libraries
+library(terra)
+library(data.table)
+library(ggplot2)
+
+# load long/lats
+ll <- fread(file = "TOP_coords_years.csv")
+
+# add an age
+ll[, "age" := sample(x = 4:30, size = .N, replace = TRUE)]
+
+# add year of birth
+ll[, "yob" := Year - age]
+
+# add age in months
+ll[, "agem" := age * 12]
+
+# load temp
+dat <- rast(x = "cmems_mod_glo_phy_my_0.083deg_P1M-m_1755165037789.nc")
+
+# limit ll to only fish born after dat is recorded
+ll_ <- ll[yob >= year(min(time(dat))), ]
+
+# add location ID (for matching later)
+ll_[, "ID" := 1:.N]
+
+# get temp at ll
+temps <- data.table(extract(x = dat, y = ll_[, .(longitude_set_start, latitude_set_start)]))
+
+# make it long
+temps_l <- melt(data = temps, id.vars = "ID",
+                variable.name = "date", value.name = "temperature")
+
+# add time
+temps_l[, "date" := time(dat)[as.integer(date)]]
+temps_l[, "year" := year(date)]
+
+```
+
+```{r}
+#| label: plot-trend
+
+# plot
+foo <- temps_l[, .("min" = min(temperature), 
+                   "mean" = mean(temperature), 
+                   "max" = max(temperature)),
+               by = date]
+p <- ggplot(data = foo, mapping = aes(x = date, y = mean)) +
+  geom_ribbon(mapping = aes(ymin = min, ymax = max), alpha = 0.2) +
+  geom_line()
+
+```
+
+# Anomalies
+
+```{r}
+#| label: anoms
+
+# get temp data for age
+temps_ll1 <- temps_l[ll_, on = .(ID, year >= yob, year <= Year)]
+
+# sum it
+ll_ <- cbind(ll_, "dm" = temps_ll1[, sum(temperature), by = .(ID)]$V1)
+
+# substract agem from dm
+ll_[, "dres" := dm - agem]
+
+```
+
+```{r}
+#| label: plot-anom
+
+# plots
+foo <- melt(data = ll_, id.vars = "agem", measure.vars = c("dm", "dres"))
+p <- ggplot(data = foo, mapping = aes(x = agem, y = value, colour = variable)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+print(p)
+
+```
+
+```{r}
+#| label: cors-anom
+
+# correlations
+print(x = cor.test(x = ll_$agem, y = ll_$dm))
+print(x = cor.test(x = ll_$agem, y = ll_$dres))
+
+```
+
+# Relative anomalies
+
+```{r}
+#| label: relanoms
+
+# copy temps_l and add info
+foo <- ll_
+foo[, c("minyob", "relyear") := .(min(yob), min(yob) + age)]
+
+# get temp data for age
+temps_ll2 <- temps_l[ll_, on = .(ID, year >= minyob, year <= relyear)]
+
+# sum it
+ll_ <- cbind(ll_, "rdm" = temps_ll2[, sum(temperature), by = .(ID)]$V1)
+
+# substract agem from dm
+ll_[, "rdres" := rdm - agem]
+
+```
+
+
+```{r}
+#| label: plot-relanoms
+
+# plots
+foo <- melt(data = ll_, id.vars = "agem", measure.vars = c("rdm", "rdres"))
+p <- ggplot(data = foo, mapping = aes(x = agem, y = value, colour = variable)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+print(p)
+
+```
+
+```{r}
+#| label: cors-relanoms
+
+# correlations
+print(x = cor.test(x = ll_$agem, y = ll_$rdm))
+print(x = cor.test(x = ll_$agem, y = ll_$rdres))
+
+```
