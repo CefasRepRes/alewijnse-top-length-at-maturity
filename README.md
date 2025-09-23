@@ -32,3 +32,8 @@ All code used in this projects is contained within the `code` folder:
 ## Models
 
 Contains the JAGS code for each of the candiate models.
+
+## Licence
+
+> All work was done for non-commercial purposes and is licenced under the conditions of the Open Government Licence found at: http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3
+
