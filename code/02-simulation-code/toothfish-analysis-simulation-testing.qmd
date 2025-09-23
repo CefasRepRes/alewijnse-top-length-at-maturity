@@ -764,6 +764,7 @@ print(pairs_p)
 
 ```{r}
 #| include: false
+#| eval: false
 
 # save
 save.image("toothfish-analysis-simulations.RData")
@@ -773,7 +774,21 @@ save.image("toothfish-analysis-simulations.RData")
 ```{r}
 #| include: false
 
-# save figure 2
-
+# save version of coef_p for figure 2
+foo <- ggplot(data = subset(x = ests_dt, 
+                               subset = !Coefficient %in% c("sigma", "tau")),
+                 mapping = aes(x = Coefficient, y = Mean,
+                               ymin = `2.5%`, ymax = `97.5%`)) +
+  geom_point(size = 3) +
+  geom_errorbar(width = 0.25, linewidth = 1.25) +
+  geom_point(data = ests_dt, mapping = aes(y = Actual), colour = "red", size = 3) +
+  facet_grid(cols = vars(Model), rows = vars(Type), scales = "free") +
+  labs(x = "Model parameter", y = "Estimate / generating value") +
+  theme_bw(base_size = 20) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+jpeg(filename = "figure2.jpg", 
+     res = 300, width = (480 * 12), height = (480 * 5))
+print(foo)
+dev.off()
 
 ```
