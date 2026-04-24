@@ -8,13 +8,13 @@ This repository contains code used in this paper (link TBC).
 
 To cite the paper:
 
-> Marsh, J. E., Alewijnse, S. R., Gregory, S. D., Hollyman, P. R. and Söffker, M. Estimating Patagonian toothfish (*Dissostichus eleginoides*) length at first maturity from their age, sex, and temperature experience. TBC
+> Marsh, J. E., Alewijnse, S. R., Gregory, S. D., Hollyman, P. R. and Söffker, M. (2026) Estimating Patagonian toothfish (*Dissostichus eleginoides*) length at first maturity from their age, sex, and temperature experience. Journal of Fish Biology, TBC.
 
 ## Data
 
 Data from Copernicus Marine Environment Monitoring Service (CMEMS) can be downloaded [here](https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030/download?dataset=cmems_mod_glo_phy_my_0.083deg_P1M-m_202311). 
 You will need to select the monthly dataset for data from 1993 - 2021, and the interim monthly dataset for data from 2021 onwards.
-The variable to seelct is `Sea water potential temperature at seafloor bottomT[°C]`
+The variable to select is `Sea water potential temperature at seafloor bottomT[°C]`
 
 Ageing data are available on request from the [UK Polar Data Centre](https://www.bas.ac.uk/data/uk-pdc/).
 
