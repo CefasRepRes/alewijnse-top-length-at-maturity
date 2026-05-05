@@ -725,7 +725,9 @@ coef_p <- ggplot(data = subset(x = ests_dt,
                                ymin = `2.5%`, ymax = `97.5%`)) +
   geom_point() +
   geom_errorbar(width = 0.25) +
-  geom_point(data = ests_dt, mapping = aes(y = Actual), colour = "red") +
+  geom_point(data = subset(x = ests_dt, 
+                               subset = !Coefficient %in% c("sigma", "tau")), 
+             mapping = aes(y = Actual), colour = "red") +
   facet_grid(cols = vars(Model), rows = vars(Type), scales = "free") +
   labs(x = "Model parameter", y = "Estimate / generating value") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
@@ -776,12 +778,14 @@ save.image("toothfish-analysis-simulations.RData")
 
 # save version of coef_p for figure 2
 foo <- ggplot(data = subset(x = ests_dt, 
-                               subset = !Coefficient %in% c("sigma", "tau")),
-                 mapping = aes(x = Coefficient, y = Mean,
-                               ymin = `2.5%`, ymax = `97.5%`)) +
+                            subset = !Coefficient %in% c("sigma", "tau")),
+              mapping = aes(x = Coefficient, y = Mean,
+                            ymin = `2.5%`, ymax = `97.5%`)) +
   geom_point(size = 3) +
   geom_errorbar(width = 0.25, linewidth = 1.25) +
-  geom_point(data = ests_dt, mapping = aes(y = Actual), colour = "red", size = 3) +
+  geom_point(data = subset(x = ests_dt, 
+                           subset = !Coefficient %in% c("sigma", "tau")), 
+             mapping = aes(y = Actual), colour = "red", size = 3) +
   facet_grid(cols = vars(Model), rows = vars(Type), scales = "free") +
   labs(x = "Model parameter", y = "Estimate / generating value") +
   theme_bw(base_size = 20) +
