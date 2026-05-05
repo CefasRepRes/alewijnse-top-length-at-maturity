@@ -2,7 +2,7 @@
 
 Author(s): [Sarah Alewijnse](https://github.com/sarah-alewijnse), [Stephen Gregory](https://github.com/stephendavidgregory)
 
-Contact: sarah.alewijnse@cefas.gov.uk
+Contact: [sarah.alewijnse@cefas.gov.uk](mailto:sarah.alewijnse@cefas.gov.uk)
 
 This repository contains code used in this paper (link TBC).
 
