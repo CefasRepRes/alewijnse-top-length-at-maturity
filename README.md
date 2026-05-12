@@ -4,11 +4,11 @@ Author(s): [Sarah Alewijnse](https://github.com/sarah-alewijnse), [Stephen Grego
 
 Contact: [sarah.alewijnse@cefas.gov.uk](mailto:sarah.alewijnse@cefas.gov.uk)
 
-This repository contains code used in this paper (link TBC).
+This repository contains code used in this paper [http://doi.org/10.1111/jfb.70487](http://doi.org/10.1111/jfb.70487).
 
 To cite the paper:
 
-> Marsh, J. E., Alewijnse, S. R., Gregory, S. D., Hollyman, P. R. and Söffker, M. (2026) Estimating Patagonian toothfish (*Dissostichus eleginoides*) length at first maturity from their age, sex, and temperature experience. Journal of Fish Biology, TBC.
+> Marsh, J. E., Alewijnse, S. R., Gregory, S. D., Hollyman, P. R. and Söffker, M. (2026) Estimating Patagonian toothfish (*Dissostichus eleginoides*) length at first maturity from their age, sex, and temperature experience. Journal of Fish Biology, *Early view*, DOI: [http://doi.org/10.1111/jfb.70487](http://doi.org/10.1111/jfb.70487).
 
 ## Data
 
